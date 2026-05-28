@@ -22,7 +22,8 @@ const TABS = {
     SKIN: 'skin',
     MENU: 'menu',
     PROFILE: 'profile',
-    SETTINGS: 'settings'
+    SETTINGS: 'settings',
+    HISTORY: 'history'
 };
 
 const DEFAULT_PROFILE = {
@@ -129,6 +130,7 @@ const Icon = ({ name, className = "w-6 h-6" }) => {
         menu: <path d="M3 12h18M3 6h18M3 18h18" />,
         profile: <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />,
         settings: <g><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g>,
+        history: <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />,
         search: <g><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></g>,
         camera: <g><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></g>,
         upload: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>,
@@ -158,32 +160,28 @@ const performOCR = async (imageSrc, onProgress) => {
     }
 };
 
-// --- Direct CORS-Enabled Gemini 1.5 Flash Client Fetch ---
-const callGemini = async (apiKey, prompt) => {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+// --- Direct CORS-Enabled Groq API Client Fetch ---
+const callGroq = async (apiKey, prompt) => {
+    const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            contents: [{
-                parts: [{
-                    text: prompt
-                }]
-            }],
-            generationConfig: {
-                responseMimeType: "application/json"
-            }
+            model: "llama3-70b-8192",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
         })
     });
 
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Gemini AI connection failed.');
+        throw new Error(errorData.error?.message || 'Groq AI connection failed.');
     }
 
     const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
+    const text = data.choices[0].message.content;
     return JSON.parse(text);
 };
 
@@ -626,7 +624,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
             </div>
 
             {!cameraError && (
-                <div className="bg-black/60 backdrop-blur-md p-8 border-t border-white/[0.05] flex justify-center items-center">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-6 pb-12 border-t border-white/[0.05] flex justify-center items-center z-50 shadow-[0_-20px_40px_rgba(0,0,0,0.5)]">
                     <button 
                         onClick={capture}
                         className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/30 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
@@ -768,6 +766,12 @@ const SafeLens = () => {
         return localStorage.getItem('safelens_gemini_key') || '';
     });
     
+    // History State
+    const [scanHistory, setScanHistory] = useState(() => {
+        const saved = localStorage.getItem('safelens_history');
+        return saved ? JSON.parse(saved) : [];
+    });
+    
     const [loading, setLoading] = useState(false);
     const [analysis, setAnalysis] = useState(null);
     const [error, setError] = useState(null);
@@ -775,6 +779,10 @@ const SafeLens = () => {
     useEffect(() => {
         localStorage.setItem('safelens_profile', JSON.stringify(profile));
     }, [profile]);
+
+    useEffect(() => {
+        localStorage.setItem('safelens_history', JSON.stringify(scanHistory));
+    }, [scanHistory]);
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
@@ -880,13 +888,15 @@ const SafeLens = () => {
                     }`;
                 }
 
-                // Call Gemini Direct Client Fetch
-                const result = await callGemini(geminiKey, prompt);
+                // Call Groq Direct Client Fetch
+                const result = await callGroq(geminiKey, prompt);
                 setAnalysis(result);
+                setScanHistory(prev => [{ id: Date.now(), date: new Date().toLocaleString(), type: activeTab, result, productName: result.productName || result.overallRisk || 'Analysis' }, ...prev].slice(0, 50));
             } else {
                 // Fallback to local offline smart engine
                 const localResult = runOfflineAnalysis(inputData, activeTab, profile);
                 setAnalysis(localResult);
+                setScanHistory(prev => [{ id: Date.now(), date: new Date().toLocaleString(), type: activeTab, result: localResult, productName: localResult.productName || localResult.overallRisk || 'Local Analysis' }, ...prev].slice(0, 50));
             }
         } catch (err) {
             console.error("Analysis Failure:", err);
@@ -1248,6 +1258,56 @@ const SafeLens = () => {
         );
     };
 
+    const HistoryTab = () => {
+        return (
+            <div className="space-y-6 animate-slide-up pb-24">
+                <div className="glass p-6 sm:p-8 rounded-[2.5rem] border-white/5 relative overflow-hidden">
+                    <div className="flex items-center gap-5 mb-8">
+                        <div className="w-16 h-16 rounded-2xl bg-brand-teal/10 flex items-center justify-center text-brand-teal">
+                            <Icon name="history" className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black font-header tracking-tight text-white">Scan History</h2>
+                            <p className="text-xs text-slate-500 font-semibold mt-0.5">Your past health safety audits</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {scanHistory.length === 0 ? (
+                            <div className="text-center p-12 bg-white/[0.01] rounded-3xl border border-dashed border-white/10">
+                                <Icon name="history" className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                                <p className="text-slate-400 font-bold">No history available.</p>
+                                <p className="text-xs text-slate-500 mt-2">Run a scan to see it here.</p>
+                            </div>
+                        ) : (
+                            scanHistory.map((item, index) => (
+                                <button 
+                                    key={item.id || index}
+                                    onClick={() => {
+                                        setAnalysis(item.result);
+                                        setActiveTab(item.type);
+                                    }}
+                                    className="w-full text-left p-5 rounded-2xl glass-hover bg-white/[0.02] border border-white/[0.04] flex items-center justify-between group transition-all"
+                                >
+                                    <div>
+                                        <div className="flex gap-2 items-center mb-1">
+                                            <span className="text-[9px] uppercase tracking-widest font-black text-brand-teal bg-brand-teal/10 px-2 py-0.5 rounded-md">{item.type}</span>
+                                            <span className="text-xs text-slate-500 font-bold">{item.date}</span>
+                                        </div>
+                                        <h4 className="text-white font-bold text-sm line-clamp-1">{item.productName || 'Analysis Result'}</h4>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-brand-teal group-hover:text-black transition-colors text-slate-400">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    </div>
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const SettingsTab = () => {
         const [tempKey, setTempKey] = useState(geminiKey);
         const [showKey, setShowKey] = useState(false);
@@ -1559,6 +1619,7 @@ const SafeLens = () => {
                             { id: TABS.SKIN, icon: 'skin', label: 'Skincare' },
                             { id: TABS.MENU, icon: 'menu', label: 'Menu Decoder' },
                             { id: TABS.PROFILE, icon: 'profile', label: 'Health Profile' },
+                            { id: TABS.HISTORY, icon: 'history', label: 'History' },
                             { id: TABS.SETTINGS, icon: 'settings', label: 'API Settings' }
                         ].map(tab => (
                             <button 
@@ -1637,6 +1698,7 @@ const SafeLens = () => {
                             />
                         )}
                         {activeTab === TABS.PROFILE && <ProfileTab />}
+                        {activeTab === TABS.HISTORY && <HistoryTab />}
                         {activeTab === TABS.SETTINGS && <SettingsTab />}
                     </div>
                 )}
@@ -1647,8 +1709,8 @@ const SafeLens = () => {
                 {[
                     { id: TABS.FOOD, icon: 'food', label: 'Scanner' },
                     { id: TABS.MEDS, icon: 'meds', label: 'Meds' },
-                    { id: TABS.SKIN, icon: 'skin', label: 'Skincare' },
-                    { id: TABS.MENU, icon: 'menu', label: 'Menu' },
+                    { id: TABS.SKIN, icon: 'skin', label: 'Skin' },
+                    { id: TABS.HISTORY, icon: 'history', label: 'History' },
                     { id: TABS.PROFILE, icon: 'profile', label: 'Me' },
                     { id: TABS.SETTINGS, icon: 'settings', label: 'Config' }
                 ].map(tab => (
@@ -1684,7 +1746,7 @@ const SafeLens = () => {
                             <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                                 <div className="h-full bg-brand-teal animate-[pulse_1s_infinite] w-full shadow-[0_0_10px_#00F2B8]"></div>
                             </div>
-                            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">SafeLens Engine v3.0</p>
+                            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">SafeLens Engine & Groq AI</p>
                         </div>
                     </div>
                 </div>
