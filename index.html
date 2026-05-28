@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeLens — AI Health Guard & Label Scanner</title>
+    
+    <!-- React 18 & ReactDOM 18 -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel Standalone for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tesseract OCR Library -->
+    <script src="https://unpkg.com/tesseract.js@v4.0.1/dist/tesseract.min.js"></script>
+    
+    <!-- Google Fonts: Outfit for sleek UI, Sora for strong headers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Sora:wght@100..800&display=swap" rel="stylesheet">
+    
+    <script>
+        // Setup Tailwind config with custom colors and fonts
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        header: ['Sora', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            deep: '#090B11',
+                            card: 'rgba(18, 22, 33, 0.7)',
+                            teal: '#00F2B8',
+                            mint: '#2AF598',
+                            amber: '#FFB347',
+                            coral: '#FF5E62',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        :root {
+            --bg-deep: #080A0F;
+            --accent-teal: #00F2B8;
+            --accent-mint: #2AF598;
+            --accent-amber: #FFB347;
+            --accent-coral: #FF5E62;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #F8FAFC;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            background-blend-mode: overlay;
+            opacity: 0.99; /* Fix for background blend noise rendering */
+        }
+
+        .font-header {
+            font-family: 'Sora', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        /* Glassmorphism Styles */
+        .glass {
+            background: rgba(15, 20, 32, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-hover {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-hover:hover {
+            background: rgba(22, 28, 45, 0.8);
+            border-color: rgba(0, 242, 184, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px 0 rgba(0, 242, 184, 0.05);
+        }
+
+        .glass-teal {
+            background: rgba(0, 242, 184, 0.02);
+            border: 1px solid rgba(0, 242, 184, 0.08);
+        }
+
+        .glass-coral {
+            background: rgba(255, 94, 98, 0.02);
+            border: 1px solid rgba(255, 94, 98, 0.08);
+        }
+
+        .glass-amber {
+            background: rgba(255, 179, 71, 0.02);
+            border: 1px solid rgba(255, 179, 71, 0.08);
+        }
+
+        /* Ambient Glow System */
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 50% -20%, rgba(0, 242, 184, 0.15) 0%, transparent 60%),
+                        radial-gradient(circle at 100% 80%, rgba(255, 94, 98, 0.04) 0%, transparent 50%),
+                        radial-gradient(circle at 0% 100%, rgba(42, 245, 152, 0.03) 0%, transparent 40%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Animations */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        .pulse-danger {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            border: 1px solid transparent;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 242, 184, 0.3);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Glassmorphic progress circle styling */
+        .score-ring {
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+    </style>
+    
+    <script>
+        // Set application load checker state
+        window.appLoaded = false;
+        
+        // Timeout to check if application successfully initialized
+        setTimeout(function() {
+            if (!window.appLoaded) {
+                if (window.location.protocol === 'file:') {
+                    var warningEl = document.getElementById('cors-warning');
+                    if (warningEl) {
+                        warningEl.classList.remove('hidden');
+                    }
+                } else {
+                    console.error("SafeLens.js took too long to load or had a compilation error. Check console for Babel errors.");
+                }
+            }
+        }, 8000); // Increased timeout to 8 seconds for Babel compilation
+    </script>
+</head>
+<body class="bg-brand-deep">
+    <div class="bg-glow"></div>
+    
+    <div id="root" class="min-h-screen flex flex-col relative z-10"></div>
+    
+    <!-- Script Error / CORS Troubleshooting Modal (Hidden by default, shown if react app fails to load) -->
+    <div id="cors-warning" class="hidden fixed inset-0 z-[999] bg-[#080A0F]/95 backdrop-blur-xl flex items-center justify-center p-6">
+        <div class="glass max-w-lg w-full rounded-[2.5rem] p-8 border-red-500/20 shadow-[0_20px_50px_rgba(255,94,98,0.15)] relative overflow-hidden animate-slide-up">
+            <div class="absolute -top-12 -right-12 w-48 h-48 bg-red-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-teal-400/5 rounded-full blur-3xl"></div>
+            
+            <div class="flex gap-4 items-start mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-brand-coral flex-shrink-0 animate-pulse">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-white tracking-tight font-header">Security CORS Blocked</h2>
+                    <p class="text-[10px] uppercase tracking-widest font-black text-brand-coral/80 mt-1">Browser Sandbox Restriction</p>
+                </div>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed mb-6">
+                Modern browsers block local JavaScript files (<code class="bg-white/5 px-1.5 py-0.5 rounded text-brand-coral">SafeLens.js</code>) from executing when opened via the <code class="bg-white/5 px-1.5 py-0.5 rounded text-brand-coral">file://</code> protocol.
+            </p>
+            
+            <div class="space-y-4 bg-white/5 border border-white/5 rounded-2xl p-5 mb-6 text-xs text-slate-300">
+                <p class="font-bold">To fix this, simply launch a local web server:</p>
+                
+                <div class="space-y-3 font-mono">
+                    <div>
+                        <div class="flex justify-between text-[9px] uppercase font-black text-slate-500 tracking-wider mb-1">
+                            <span>Using Node.js (Highly Recommended)</span>
+                            <button onclick="navigator.clipboard.writeText('npx serve'); this.innerText='Copied!'" class="text-brand-teal hover:text-brand-mint font-bold uppercase transition-colors">Copy</button>
+                        </div>
+                        <code class="block w-full bg-black/40 border border-white/5 p-3 rounded-xl text-brand-teal select-all">npx serve</code>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[9px] uppercase font-black text-slate-500 tracking-wider mb-1">
+                            <span>Using Python</span>
+                            <button onclick="navigator.clipboard.writeText('python -m http.server 8000'); this.innerText='Copied!'" class="text-brand-teal hover:text-brand-mint font-bold uppercase transition-colors">Copy</button>
+                        </div>
+                        <code class="block w-full bg-black/40 border border-white/5 p-3 rounded-xl text-brand-teal select-all">python -m http.server 8000</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-3">
+                <a href="http://localhost:3000" class="flex-1 bg-gradient-to-r from-brand-teal to-brand-mint text-black text-center font-black py-4 rounded-xl shadow-lg shadow-brand-teal/20 text-xs uppercase tracking-widest hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2">
+                    Open Localhost
+                    <svg class="w-4 h-4 animate-[bounce_1.5s_infinite]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compile and run SafeLens logic -->
+    <script type="text/babel" data-presets="react" src="SafeLens.js"></script>
+</body>
+</html>
+
