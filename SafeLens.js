@@ -1051,7 +1051,7 @@ const SafeLens = () => {
                                 className="bg-gradient-to-r from-brand-teal to-brand-mint text-black font-black py-5 px-6 rounded-2xl flex flex-col items-center justify-center gap-2 group hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-brand-teal/10"
                             >
                                 <Icon name="camera" className="w-7 h-7 text-black group-hover:scale-110 transition-transform" />
-                                <span className="uppercase tracking-widest text-[10px] font-black">Scan via Camera</span>
+                                <span className="uppercase tracking-widest text-[11px] font-black">📷 Analyze Label</span>
                             </button>
 
                             {/* Drag & Drop zone */}
@@ -1636,6 +1636,14 @@ const SafeLens = () => {
                             <span className="text-brand-teal">Safe</span>Lens
                         </h1>
                         <p className="text-[9px] uppercase tracking-[0.3em] font-black text-slate-500 mt-0.5">AI Health Guard</p>
+                        <div className="mt-4 flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <span className="text-brand-teal text-xs">✓</span> Ingredient Database
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <span className="text-brand-teal text-xs">✓</span> Allergy Detection
+                            </div>
+                        </div>
                     </div>
 
                     {/* Navigation Links */}
@@ -1736,6 +1744,7 @@ const SafeLens = () => {
                     { id: TABS.FOOD, icon: 'food', label: 'Scanner' },
                     { id: TABS.MEDS, icon: 'meds', label: 'Meds' },
                     { id: TABS.SKIN, icon: 'skin', label: 'Skin' },
+                    { id: TABS.MENU, icon: 'menu', label: 'Menu' },
                     { id: TABS.HISTORY, icon: 'history', label: 'History' },
                     { id: TABS.PROFILE, icon: 'profile', label: 'Me' }
                 ].map(tab => (
