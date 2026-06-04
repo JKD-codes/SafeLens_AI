@@ -147,11 +147,39 @@ const Icon = ({ name, className = "w-6 h-6" }) => {
 // --- Direct Client-Side Tesseract OCR ---
 const performOCR = async (imageSrc, onProgress) => {
     try {
+        // Pre-process image for better OCR (grayscale & contrast)
+        const img = new Image();
+        img.src = imageSrc;
+        await new Promise(resolve => img.onload = resolve);
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.drawImage(img, 0, 0);
+        
+        // Apply grayscale and high contrast filter
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            avg = avg < 128 ? avg / 1.5 : Math.min(255, avg * 1.5);
+            data[i] = avg;     
+            data[i + 1] = avg; 
+            data[i + 2] = avg; 
+        }
+        ctx.putImageData(imageData, 0, 0);
+        const processedSrc = canvas.toDataURL('image/png');
+
         // Simplified single-call Tesseract recognition
         const { data: { text } } = await Tesseract.recognize(
-            imageSrc,
+            processedSrc,
             'eng',
-            { logger: m => onProgress && onProgress(m.status, m.progress) }
+            { 
+                tessedit_pageseg_mode: '1', 
+                logger: m => onProgress && onProgress(m.status, m.progress) 
+            }
         );
         return text;
     } catch (err) {
@@ -596,9 +624,9 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
                 <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             
-            <div className="flex-1 flex items-center justify-center relative bg-black">
+            <div className="flex-1 flex items-center justify-center relative bg-black" onClick={capture}>
                 {cameraError ? (
-                    <div className="text-center p-8 max-w-sm">
+                    <div className="text-center p-8 max-w-sm" onClick={(e) => e.stopPropagation()}>
                         <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-4 animate-bounce">
                             <Icon name="alert" className="w-8 h-8" />
                         </div>
@@ -606,7 +634,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
                         <button onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-2 rounded-xl text-xs uppercase tracking-widest">Close Scanner</button>
                     </div>
                 ) : (
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover cursor-pointer" />
                 )}
                 
                 {/* Visual scanning overlay guide lines */}
@@ -624,10 +652,10 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
             </div>
 
             {!cameraError && (
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-6 pb-12 border-t border-white/[0.05] flex justify-center items-center z-50 shadow-[0_-20px_40px_rgba(0,0,0,0.5)]">
+                <div className="fixed bottom-6 md:bottom-10 left-4 right-4 flex justify-center items-center z-[105] pointer-events-none pb-[env(safe-area-inset-bottom)]">
                     <button 
-                        onClick={capture}
-                        className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/30 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                        onClick={(e) => { e.stopPropagation(); capture(); }}
+                        className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-black/40 backdrop-blur-md hover:bg-black/60 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.8)] pointer-events-auto"
                     >
                         <div className="w-14 h-14 rounded-full bg-white animate-pulse"></div>
                     </button>
@@ -819,6 +847,8 @@ const SafeLens = () => {
                     
                     Ingredients raw text: "${inputData}"
 
+                    CRITICAL: The raw text may contain OCR gibberish or misspelled words. Auto-correct them to the closest real chemical/ingredient name. Completely ignore random noise or symbols that are not ingredients.
+
                     Return strictly a single JSON object. Do not include markdown code block syntax. Follow this exact schema:
                     {
                       "productName": "string (brand/product title if guessable, otherwise 'Product Analysis')",
@@ -840,6 +870,8 @@ const SafeLens = () => {
                     prompt = `Analyze this list of clinical medications for drug-to-drug interactions and risks considering these active clinical conditions: ${profile.conditions.join(', ')}:
                     Medications list: "${inputData}"
 
+                    CRITICAL: The raw text may contain OCR gibberish or misspelled words. Auto-correct them to the closest real medication name. Completely ignore random noise or symbols that are not medications.
+
                     Return strictly a single JSON object without markdown code blocks. Follow this exact schema:
                     {
                       "medicines": ["string (cleaned medicine names)"],
@@ -856,6 +888,8 @@ const SafeLens = () => {
                     Conditions: ${profile.conditions.join(', ')}
                     
                     Skincare Ingredients list: "${inputData}"
+
+                    CRITICAL: The raw text may contain OCR gibberish or misspelled words. Auto-correct them to the closest real chemical/ingredient name. Completely ignore random noise or symbols that are not ingredients.
 
                     Return strictly a single JSON object without markdown code blocks. Follow this exact schema:
                     {
@@ -876,6 +910,8 @@ const SafeLens = () => {
                     Dietary Goal: ${profile.goal}
                     
                     Menu Text: "${inputData}"
+
+                    CRITICAL: The raw text may contain OCR gibberish or misspelled words. Auto-correct them to the closest real dish/ingredient name. Completely ignore random noise or symbols.
 
                     Return strictly a single JSON object without markdown code blocks. Follow this exact schema:
                     {
