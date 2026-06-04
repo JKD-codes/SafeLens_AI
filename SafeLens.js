@@ -1051,7 +1051,7 @@ const SafeLens = () => {
                                 className="bg-gradient-to-r from-brand-teal to-brand-mint text-black font-black py-5 px-6 rounded-2xl flex flex-col items-center justify-center gap-2 group hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-brand-teal/10"
                             >
                                 <Icon name="camera" className="w-7 h-7 text-black group-hover:scale-110 transition-transform" />
-                                <span className="uppercase tracking-widest text-[11px] font-black">📷 Analyze Label</span>
+                                <span className="uppercase tracking-widest text-[11px] font-black">Analyze Label</span>
                             </button>
 
                             {/* Drag & Drop zone */}
