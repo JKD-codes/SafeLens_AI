@@ -652,7 +652,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
             </div>
 
             {!cameraError && (
-                <div className="absolute bottom-8 left-4 right-4 flex justify-center items-center z-[105] pointer-events-none pb-[env(safe-area-inset-bottom)]">
+                <div className="absolute bottom-40 left-4 right-4 flex justify-center items-center z-[105] pointer-events-none pb-[env(safe-area-inset-bottom)]">
                     <button 
                         onClick={(e) => { e.stopPropagation(); capture(); }}
                         className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-black/40 backdrop-blur-md hover:bg-black/60 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.8)] pointer-events-auto"
@@ -1126,6 +1126,20 @@ const SafeLens = () => {
     };
 
     const StandardTextTab = ({ title, placeholder, buttonLabel, icon, colorClass, borderClass, shadowClass }) => {
+        const [isCameraOpen, setIsCameraOpen] = useState(false);
+        const [ocrProgress, setOcrProgress] = useState(null);
+        
+        const handleCapture = async (imageSrc) => {
+            setLoading(true);
+            const text = await performOCR(imageSrc);
+            setLoading(false);
+            if (text && text.trim().length > 3) {
+                setTextInput(text);
+                runAnalysis(text);
+            } else {
+                setError("Failed to extract legible characters.");
+            }
+        };
         const [textInput, setTextInput] = useState('');
         const [fileName, setFileName] = useState('');
         const fileInputRef = useRef(null);
@@ -1150,6 +1164,11 @@ const SafeLens = () => {
 
         return (
             <div className="space-y-6 animate-slide-up">
+                <CameraModal 
+                    isOpen={isCameraOpen} 
+                    onClose={() => setIsCameraOpen(false)} 
+                    onCapture={handleCapture} 
+                />
                 <div className="glass p-6 sm:p-8 rounded-[2.5rem] border-white/5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
                         <Icon name={activeTab} className="w-36 h-36 text-white" />
@@ -1163,21 +1182,32 @@ const SafeLens = () => {
                     </h2>
                     
                     <div className="mt-6 space-y-4">
-                        <div 
-                            onClick={() => fileInputRef.current.click()}
-                            className="border-2 border-dashed border-white/10 hover:border-white/20 rounded-2xl flex items-center justify-center gap-3 py-4 cursor-pointer hover:bg-white/[0.01] transition-all mb-2"
-                        >
-                            <input 
-                                ref={fileInputRef}
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={(e) => handleFile(e.target.files[0])}
-                            />
-                            <Icon name="upload" className="w-5 h-5 text-slate-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                {fileName ? fileName : 'Upload Screenshot / Image'}
-                            </span>
+                        <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div 
+                                onClick={() => setIsCameraOpen(true)}
+                                className="border border-white/10 hover:border-white/20 rounded-2xl flex flex-col items-center justify-center gap-2 py-4 cursor-pointer hover:bg-white/[0.02] transition-all bg-black/20"
+                            >
+                                <Icon name="camera" className="w-6 h-6 text-slate-400" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center px-1">
+                                    Live Scan
+                                </span>
+                            </div>
+                            <div 
+                                onClick={() => fileInputRef.current.click()}
+                                className="border border-white/10 hover:border-white/20 rounded-2xl flex flex-col items-center justify-center gap-2 py-4 cursor-pointer hover:bg-white/[0.02] transition-all bg-black/20"
+                            >
+                                <input 
+                                    ref={fileInputRef}
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={(e) => handleFile(e.target.files[0])}
+                                />
+                                <Icon name="upload" className="w-6 h-6 text-slate-400" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center px-1">
+                                    {fileName ? fileName.substring(0, 10) + '...' : 'Upload Image'}
+                                </span>
+                            </div>
                         </div>
 
                         <textarea 
@@ -1400,7 +1430,7 @@ const SafeLens = () => {
                             </button>
                         )}
                         <div className="px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[9px] font-black tracking-widest text-slate-500 uppercase">
-                            {data.needsAI !== undefined ? 'Local core audit' : 'AI augmented scan'}
+                            {data.needsAI !== undefined ? 'Local core audit' : 'Deep Analysis Active'}
                         </div>
                     </div>
                 </div>
@@ -1633,11 +1663,11 @@ const SafeLens = () => {
                 {/* API Status Indicator Badge */}
                 <div className="flex items-center gap-3 md:mt-auto px-1 py-2">
                     <div className="relative flex h-2 w-2">
-                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${geminiKey ? 'bg-brand-teal' : 'bg-brand-amber'}`}></span>
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${geminiKey ? 'bg-brand-teal' : 'bg-brand-amber'}`}></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-brand-teal"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-teal"></span>
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                        {geminiKey ? 'Gemini AI Augmented' : 'Smart Offline Core'}
+                        System Active
                     </span>
                 </div>
             </aside>
