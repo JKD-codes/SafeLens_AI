@@ -617,7 +617,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
 
     if (!isOpen) return null;
 
-    return (
+    return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[100] bg-[#080A0F] flex flex-col justify-between" style={{ height: "100dvh" }}>
             <div className="flex justify-between items-center p-6 bg-black/60 backdrop-blur-md absolute top-0 w-full z-10 border-b border-white/[0.05]">
                 <h3 className="font-header font-black text-white uppercase tracking-widest text-xs">Live Label Scanner</h3>
@@ -661,7 +661,8 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
                     </button>
                 </div>
             )}
-        </div>
+        </div>,
+        document.body
     );
 };
 
