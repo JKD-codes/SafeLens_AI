@@ -294,25 +294,19 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
         tokens.forEach(tok => {
             let matched = false;
+            const normTok = tok.toLowerCase().trim();
+            if (normTok.length < 3 || /^\d+$/.test(normTok) || /^[^a-z]+$/i.test(normTok)) return;
+
             // Scan offline cosmetic DB
             for (const [key, details] of Object.entries(OFFLINE_INGREDIENTS)) {
-                if (tok.includes(key)) {
+                if (normTok.includes(key)) {
                     matched = true;
                     let status = details.status;
-                    let deduction = 0;
-                    
-                    if (status === 'Avoid') {
-                        deduction = 20;
-                    } else if (status === 'Concerning') {
-                        deduction = 10;
-                    } else if (status === 'Moderate') {
-                        deduction = 5;
-                    }
+                    let deduction = status === 'Avoid' ? 20 : status === 'Concerning' ? 10 : status === 'Moderate' ? 5 : 0;
 
                     // Skin type specific warnings
                     if (profile.skinType === 'Oily' && key === 'mineral oil') {
-                        deduction += 5;
-                        status = 'Avoid';
+                        deduction += 5; status = 'Avoid';
                         skinTypeWarning = 'Contains highly comedogenic mineral oils which can trap sebum on Oily skin, triggering breakouts.';
                     } else if (profile.skinType === 'Dry' && (key === 'sls' || key === 'sodium lauryl sulfate')) {
                         deduction += 10;
@@ -331,24 +325,62 @@ const runOfflineAnalysis = (input, tab, profile) => {
                         healthySubstitute: details.substitute
                     });
 
-                    if (status === 'Avoid' || status === 'Concerning') {
-                        topConcerns.push(`${tok.toUpperCase()}: ${details.reason.slice(0, 50)}...`);
-                    } else if (status === 'Safe') {
-                        positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
-                    }
+                    if (status === 'Avoid' || status === 'Concerning') topConcerns.push(`${tok.toUpperCase()}: ${details.reason.slice(0, 50)}...`);
+                    else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
                     break;
                 }
             }
 
+            // Smart Heuristic Regex Engine (Fallback for Unknowns)
             if (!matched) {
+                let status = 'Safe';
+                let reason = 'General cosmetic formulation ingredient. No major hazardous matches found in heuristics.';
+                let deduction = 0;
+                let func = 'Cosmetic Base';
+                let comedogenic = false;
+                let edc = false;
+
+                if (/paraben|phthalate|triclosan|pf[ao]s/i.test(normTok)) {
+                    status = 'Avoid'; reason = 'Heuristically identified as a toxic preservative or endocrine disrupting chemical (EDC). Avoid prolonged dermal absorption.';
+                    deduction = 20; func = 'Toxic Preservative'; edc = true;
+                } else if (/sulfate|sls|sles|peg-|steareth/i.test(normTok)) {
+                    status = 'Concerning'; reason = 'Heuristically identified as a harsh stripping surfactant or ethoxylated chemical. May cause barrier damage.';
+                    deduction = 10; func = 'Harsh Surfactant';
+                } else if (/oil|butter|wax|dimethicone|siloxane/i.test(normTok)) {
+                    func = 'Emollient / Occlusive';
+                    if (profile.skinType === 'Oily') {
+                        status = 'Concerning'; reason = 'Heuristically identified as a heavy occlusive lipid. High risk of pore-clogging for Oily skin.';
+                        deduction = 5; comedogenic = true; skinTypeWarning = 'Heavy oils/silicones detected. May cause acne cosmetica on Oily skin.';
+                    } else {
+                        status = 'Safe'; reason = 'Moisturizing lipid barrier component.';
+                    }
+                } else if (/acid/i.test(normTok)) {
+                    func = 'Active Acid';
+                    if (profile.skinType === 'Sensitive') {
+                        status = 'Moderate'; reason = 'Chemical acid detected. May cause burning or erythema on Sensitive skin profiles.';
+                        deduction = 5; skinTypeWarning = 'Active acids detected. Use with caution on your Sensitive skin barrier.';
+                    }
+                } else if (/fragrance|parfum/i.test(normTok)) {
+                    status = 'Moderate'; reason = 'Synthetic fragrance. High potential for contact dermatitis.';
+                    deduction = 5; func = 'Sensitizing Agent';
+                } else if (/extract|water|aqua|glycerin/i.test(normTok)) {
+                    status = 'Safe'; reason = 'Benign hydration or natural botanical extract base.';
+                } else {
+                    status = 'Unknown'; reason = 'Ingredient not recognized. May require Deep AI Scan.';
+                }
+
                 ingredients.push({
                     name: tok.charAt(0).toUpperCase() + tok.slice(1),
-                    function: 'Cosmetic Base',
-                    status: 'Safe',
-                    reason: 'General cosmetic formulation ingredient. No major hazardous matches found in offline safety libraries.',
-                    comedogenic: false,
-                    endocrineDisruptor: false
+                    function: func,
+                    status,
+                    reason,
+                    comedogenic,
+                    endocrineDisruptor: edc
                 });
+                totalScore -= deduction;
+
+                if (status === 'Avoid' || status === 'Concerning') topConcerns.push(`${tok.toUpperCase()}: ${reason.slice(0, 50)}...`);
+                else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
             }
         });
 
@@ -449,7 +481,10 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
     tokens.forEach(tok => {
         let matched = false;
-        const normTok = tok.toLowerCase();
+        const normTok = tok.toLowerCase().trim();
+
+        // Noise filtering
+        if (normTok.length < 3 || /^\d+$/.test(normTok) || /^[^a-z]+$/i.test(normTok)) return;
 
         // 1. High-risk allergens first
         if (profileAllergies.includes('nuts') && (normTok.includes('peanut') || normTok.includes('almond') || normTok.includes('cashew') || normTok.includes('walnut') || normTok.includes('hazelnut') || normTok.includes('nut'))) {
@@ -484,35 +519,25 @@ const runOfflineAnalysis = (input, tab, profile) => {
             return;
         }
 
-        // 2. Scan offline food database
+        // 2. Scan exact dictionary
         for (const [key, details] of Object.entries(OFFLINE_INGREDIENTS)) {
             if (normTok.includes(key)) {
                 matched = true;
                 let status = details.status;
-                let deduction = 0;
-
-                if (status === 'Extremely Harmful') deduction = 25;
-                else if (status === 'Harmful') deduction = 15;
-                else if (status === 'Moderate') deduction = 5;
-
+                let deduction = status === 'Extremely Harmful' ? 25 : status === 'Harmful' ? 15 : status === 'Moderate' ? 5 : 0;
                 let limitExceeded = false;
                 let limitInfo = '';
 
-                // Condition profile logic overrides
-                if (profileConditions.includes('Diabetes') && (key === 'sugar' || key === 'high fructose corn syrup' || key === 'hfcs' || key === 'maida' || key === 'refined wheat flour')) {
-                    deduction *= 2;
-                    status = 'Extremely Harmful';
-                    limitExceeded = true;
+                if (profileConditions.includes('Diabetes') && (key === 'sugar' || key === 'high fructose corn syrup' || key === 'hfcs' || key === 'maida')) {
+                    deduction *= 2; status = 'Extremely Harmful'; limitExceeded = true;
                     limitInfo = 'CRITICAL LIMIT EXCEEDED FOR DIABETIC METABOLISM';
-                    personalizedWarning = `High glycemic index ingredient (${tok.toUpperCase()}) found. Poses immediate risks of postprandial glucose surges, glycation, and high insulin stress under Diabetes profile.`;
+                    personalizedWarning = `High glycemic index ingredient (${tok.toUpperCase()}) found. Poses immediate risks of postprandial glucose surges under Diabetes profile.`;
                 }
 
-                if (profileConditions.includes('Hypertension') && (key === 'sodium' || key === 'salt' || key === 'msg' || key === 'monosodium glutamate')) {
-                    deduction *= 2;
-                    status = 'Harmful';
-                    limitExceeded = true;
+                if (profileConditions.includes('Hypertension') && (key === 'sodium' || key === 'salt' || key === 'msg')) {
+                    deduction *= 2; status = 'Harmful'; limitExceeded = true;
                     limitInfo = 'SODIUM LIMIT WARNING FOR HYPERTENSIVE ARTERIAL PRESSURES';
-                    personalizedWarning = `Sodium-concentrated additive discovered. Exerts immediate fluid retention pressures, heightening cardiovascular strain under Hypertension.`;
+                    personalizedWarning = `Sodium-concentrated additive discovered. Exerts immediate fluid retention pressures under Hypertension.`;
                 }
 
                 totalScore -= deduction;
@@ -526,23 +551,84 @@ const runOfflineAnalysis = (input, tab, profile) => {
                     healthySubstitute: details.substitute
                 });
 
-                if (status === 'Extremely Harmful' || status === 'Harmful') {
-                    concerns.push(`${tok.toUpperCase()}: ${details.reason.slice(0, 60)}...`);
-                } else if (status === 'Safe') {
-                    positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
-                }
+                if (status === 'Extremely Harmful' || status === 'Harmful') concerns.push(`${tok.toUpperCase()}: ${details.reason.slice(0, 60)}...`);
+                else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
                 break;
             }
         }
 
+        // 3. Smart Heuristic Regex Engine (Fallback for Unknowns)
         if (!matched) {
+            let status = 'Unknown';
+            let reason = 'Ingredient not recognized. May require Deep AI Scan.';
+            let deduction = 0;
+            let limitExceeded = false;
+            let limitInfo = '';
+            let substitute = '';
+
+            // Sugars & Sweeteners
+            if (/ose\b|itol\b|syrup|sweetener/i.test(normTok)) {
+                status = 'Harmful';
+                reason = 'Identified heuristically as a refined sugar, sugar alcohol, or concentrated sweetener. Can cause metabolic stress.';
+                deduction = 10;
+                substitute = 'Organic Stevia or Monk Fruit extract.';
+                if (profileConditions.includes('Diabetes')) {
+                    status = 'Extremely Harmful'; deduction = 25; limitExceeded = true;
+                    limitInfo = 'DIABETIC CARBOHYDRATE THRESHOLD DANGER';
+                }
+            } 
+            // Preservatives & Chemical Acids
+            else if (/ate\b|ite\b|acid/i.test(normTok) && !/citric|ascorbic/i.test(normTok)) {
+                status = 'Moderate';
+                reason = 'Identified heuristically as a synthetic preservative or chemical salt additive. Prolonged exposure may disrupt gut flora.';
+                deduction = 5;
+            } 
+            // Fats & Oils
+            else if (/oil|fat|tallow|lard|shortening/i.test(normTok)) {
+                if (/hydrogenated|palm/i.test(normTok)) {
+                    status = 'Harmful'; reason = 'Trans-fats or high-saturated inflammatory oils detected. Severely damages cardiovascular elasticity.';
+                    deduction = 15; substitute = 'Cold-pressed extra virgin olive oil or avocado oil.';
+                } else {
+                    status = 'Safe'; reason = 'Standard dietary lipid source detected.';
+                }
+            }
+            // Thickeners & Emulsifiers
+            else if (/gum\b|carrageenan|lecithin/i.test(normTok)) {
+                status = 'Moderate'; reason = 'Processed emulsifier or thickener. Can cause mild gastrointestinal inflammation in sensitive individuals.';
+                deduction = 5;
+            }
+            // Salts & Minerals
+            else if (/sodium|potassium|calcium|chloride/i.test(normTok)) {
+                status = 'Moderate'; reason = 'Mineral salt additive detected. Watch overall daily intake limits.';
+                if (profileConditions.includes('Hypertension')) {
+                    status = 'Harmful'; deduction = 15; limitExceeded = true;
+                    limitInfo = 'HYPERTENSION SODIUM WARNING';
+                }
+            }
+            // Artificial Colors
+            else if (/yellow|red|blue|color|lake/i.test(normTok)) {
+                status = 'Harmful'; reason = 'Artificial chemical food dye detected. Linked to hyperactivity and neurotoxicity markers.';
+                deduction = 15; substitute = 'Natural fruit/vegetable color extracts.';
+            }
+            // Natural bases
+            else if (/extract|juice|water|puree/i.test(normTok)) {
+                status = 'Safe'; reason = 'Natural whole-food base ingredient.';
+            }
+
+            if (status !== 'Unknown') matched = true;
+
             ingredients.push({
                 name: tok.charAt(0).toUpperCase() + tok.slice(1),
-                status: 'Unknown',
-                reason: 'Ingredient not recognized in offline dictionary. May require Deep AI Scan for verification.',
-                dailyLimitExceeded: false
+                status,
+                reason,
+                dailyLimitExceeded: limitExceeded,
+                limitInfo,
+                healthySubstitute: substitute
             });
-            totalScore -= 2;
+            totalScore -= deduction;
+            
+            if (status === 'Extremely Harmful' || status === 'Harmful') concerns.push(`${tok.toUpperCase()}: ${reason.slice(0, 60)}...`);
+            else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
         }
     });
 
@@ -580,7 +666,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
     useEffect(() => {
         if (isOpen) {
             setCameraError(null);
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } })
                 .then(s => {
                     setStream(s);
                     // Standard delay to guarantee element loading
