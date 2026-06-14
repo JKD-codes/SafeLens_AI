@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://img.icons8.com/color/144/health-check.png" width="120" alt="SafeLens AI Logo" />
+  <h1 style="font-size: 80px; margin: 0;">🛡️</h1>
   <h1 align="center">SafeLens AI Health Guard</h1>
   <p align="center">
     <strong>Your personalized, intelligent scanner for food, skincare, medications, and menus.</strong>
