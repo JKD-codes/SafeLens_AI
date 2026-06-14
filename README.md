@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://img.icons8.com/3d-fluency/250/security-shield-green.png" alt="SafeLens Shield" width="150" style="margin-bottom: -10px;" />
+  <img src="./logo.svg" alt="SafeLens AI Logo" width="180" style="margin-bottom: -10px;" />
   <h1 align="center">SafeLens AI Health Guard</h1>
   <p align="center">
     <strong>Your personalized, intelligent scanner for food, skincare, medications, and menus.</strong>

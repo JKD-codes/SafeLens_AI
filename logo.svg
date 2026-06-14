@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="200" height="200">
+  <defs>
+    <!-- Background glowing gradient -->
+    <radialGradient id="bg-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0ff" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0ff" stop-opacity="0"/>
+    </radialGradient>
+    
+    <!-- Lens frame gradient -->
+    <linearGradient id="lens-frame" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+
+    <!-- Pupil gradient -->
+    <radialGradient id="pupil-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6ee7b7"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </radialGradient>
+
+    <!-- Scanline pattern -->
+    <pattern id="scanline" patternUnits="userSpaceOnUse" width="12" height="12">
+      <line x1="0" y1="0" x2="12" y2="0" stroke="#10b981" stroke-width="1" stroke-opacity="0.3"/>
+    </pattern>
+
+    <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer ambient glow -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg-glow)" />
+
+  <!-- Outer hexagon frame (The Shield) -->
+  <path d="M256,48 L436,152 L436,360 L256,464 L76,360 L76,152 Z" fill="#0f172a" stroke="url(#lens-frame)" stroke-width="24" stroke-linejoin="round" />
+  
+  <!-- Inner scanline background (The AI) -->
+  <path d="M256,64 L416,160 L416,352 L256,448 L96,352 L96,160 Z" fill="url(#scanline)" />
+
+  <!-- Eye Shape (The Lens) -->
+  <path d="M120,256 Q256,120 392,256 Q256,392 120,256 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="16" filter="url(#neon-glow)" />
+
+  <!-- Cybernetic Iris -->
+  <circle cx="256" cy="256" r="64" fill="url(#pupil-grad)" filter="url(#neon-glow)" />
+  <circle cx="256" cy="256" r="24" fill="#020617" />
+  
+  <!-- AI Circuit Nodes -->
+  <circle cx="256" cy="144" r="12" fill="#38bdf8" filter="url(#neon-glow)" />
+  <circle cx="256" cy="368" r="12" fill="#38bdf8" filter="url(#neon-glow)" />
+  <line x1="256" y1="156" x2="256" y2="192" stroke="#38bdf8" stroke-width="6" />
+  <line x1="256" y1="320" x2="256" y2="356" stroke="#38bdf8" stroke-width="6" />
+  
+  <!-- Scanning Laser Line -->
+  <line x1="90" y1="256" x2="422" y2="256" stroke="#10b981" stroke-width="8" filter="url(#neon-glow)" />
+</svg>
