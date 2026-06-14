@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/JKD-codes/SafeLens_AI/main/public/safelens-logo.png" width="120" alt="SafeLens AI Logo" onerror="this.src='https://img.icons8.com/color/144/health-check.png'" />
+  <img src="https://img.icons8.com/color/144/health-check.png" width="120" alt="SafeLens AI Logo" />
   <h1 align="center">SafeLens AI Health Guard</h1>
   <p align="center">
     <strong>Your personalized, intelligent scanner for food, skincare, medications, and menus.</strong>
