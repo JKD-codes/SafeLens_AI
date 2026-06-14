@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="200" height="200">
+  <defs>
+    <!-- Background glowing gradient -->
+    <radialGradient id="bg-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Lens glass gradient -->
+    <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.3"/>
+    </linearGradient>
+
+    <!-- Laser filter -->
+    <filter id="neon-laser" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer ambient glow -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg-glow)" />
+
+  <!-- The Product Label Base -->
+  <rect x="140" y="80" width="232" height="352" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="8" />
+  
+  <!-- Label Header (e.g. Nutrition Facts) -->
+  <rect x="160" y="104" width="192" height="40" fill="#334155" rx="8" />
+  
+  <!-- Abstract Text Lines (Unscanned/Outside Lens) -->
+  <line x1="160" y1="170" x2="352" y2="170" stroke="#94a3b8" stroke-width="12" stroke-linecap="round" />
+  <line x1="160" y1="200" x2="310" y2="200" stroke="#94a3b8" stroke-width="12" stroke-linecap="round" />
+  <line x1="160" y1="230" x2="330" y2="230" stroke="#94a3b8" stroke-width="12" stroke-linecap="round" />
+  
+  <line x1="160" y1="360" x2="280" y2="360" stroke="#94a3b8" stroke-width="12" stroke-linecap="round" />
+  <line x1="160" y1="390" x2="352" y2="390" stroke="#94a3b8" stroke-width="12" stroke-linecap="round" />
+
+  <!-- Scanning Laser sweeping across the label -->
+  <line x1="120" y1="280" x2="392" y2="280" stroke="#10b981" stroke-width="6" filter="url(#neon-laser)" />
+  <polygon points="256,280 236,432 276,432" fill="#10b981" opacity="0.1" />
+
+  <!-- The Magnifying Glass / Scanner Lens -->
+  <!-- Handle -->
+  <path d="M340,340 L440,440" stroke="#1e293b" stroke-width="32" stroke-linecap="round" />
+  <path d="M350,350 L430,430" stroke="#475569" stroke-width="16" stroke-linecap="round" />
+  
+  <!-- Lens Frame -->
+  <circle cx="280" cy="280" r="100" fill="url(#glass)" stroke="#38bdf8" stroke-width="16" />
+  <circle cx="280" cy="280" r="110" fill="none" stroke="#0f172a" stroke-width="8" />
+
+  <!-- Magnified Text (Inside the Lens) -->
+  <!-- Represents "Safe" and "Harmful" AI Detection -->
+  <line x1="210" y1="250" x2="350" y2="250" stroke="#10b981" stroke-width="20" stroke-linecap="round" filter="url(#neon-laser)" />
+  <line x1="210" y1="290" x2="320" y2="290" stroke="#ef4444" stroke-width="20" stroke-linecap="round" filter="url(#neon-laser)" />
+  <line x1="210" y1="330" x2="290" y2="330" stroke="#10b981" stroke-width="20" stroke-linecap="round" filter="url(#neon-laser)" />
+
+  <!-- Inner lens highlight / reflection for 3D effect -->
+  <path d="M200,220 Q240,190 300,200" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" opacity="0.8" />
+  <path d="M330,350 Q360,320 350,280" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.4" />
+</svg>
