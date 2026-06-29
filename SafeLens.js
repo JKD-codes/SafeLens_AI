@@ -204,7 +204,7 @@ const callGroq = async (apiKey, prompt) => {
 
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Groq AI connection failed.');
+        throw new Error((errorData.error && errorData.error.message) || 'Groq AI connection failed.');
     }
 
     const data = await response.json();
@@ -1492,7 +1492,7 @@ const SafeLens = () => {
 
         const isMeds = !!data.interactions;
         const isMenu = !!data.dishes;
-        const isSkin = !!data.skinTypeWarning || (data.ingredients && data.ingredients[0]?.function === 'Preservative');
+        const isSkin = !!data.skinTypeWarning || (data.ingredients && (data.ingredients[0] && data.ingredients[0].function) === 'Preservative');
 
         return (
             <div className="animate-slide-up pb-24 space-y-8">
@@ -1602,10 +1602,10 @@ const SafeLens = () => {
                     <div className="space-y-6">
                         <div className="flex justify-between items-end px-2">
                             <h4 className="text-[9px] uppercase tracking-widest text-slate-500 font-black">Active Interactions</h4>
-                            <span className="text-[10px] text-slate-600 font-bold">{data.interactions?.length || 0} Conflicts</span>
+                            <span className="text-[10px] text-slate-600 font-bold">{(data.interactions ? data.interactions.length : 0) || 0} Conflicts</span>
                         </div>
                         <div className="space-y-4">
-                            {data.interactions?.length > 0 ? (
+                            {(data.interactions ? data.interactions.length : 0) > 0 ? (
                                 data.interactions.map((item, idx) => (
                                     <div key={idx} className="glass p-5 rounded-3xl border-white/5 space-y-4">
                                         <div className="flex justify-between items-center">
@@ -1638,19 +1638,19 @@ const SafeLens = () => {
                     <div className="space-y-6">
                         <div className="flex justify-between items-end px-2">
                             <h4 className="text-[9px] uppercase tracking-widest text-slate-500 font-black">Menu Selections</h4>
-                            <span className="text-[10px] text-slate-600 font-bold">{data.dishes?.length || 0} Options</span>
+                            <span className="text-[10px] text-slate-600 font-bold">{(data.dishes ? data.dishes.length : 0) || 0} Options</span>
                         </div>
                         <div className="space-y-4">
-                            {data.dishes?.map((dish, idx) => (
+                            {(data.dishes || []).map((dish, idx) => (
                                 <div key={idx} className={`glass p-5 rounded-3xl border-white/5 space-y-4 ${dish.suitable ? 'border-brand-teal/10' : 'border-brand-coral/10'}`}>
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <h5 className="text-sm font-black text-white">{dish.name}</h5>
                                             <div className="flex gap-3 text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
                                                 <span>{dish.estimatedCalories} kcal</span>
-                                                <span>P: {dish.macros?.protein}</span>
-                                                <span>C: {dish.macros?.carbs}</span>
-                                                <span>F: {dish.macros?.fat}</span>
+                                                <span>P: {(dish.macros && dish.macros.protein)}</span>
+                                                <span>C: {(dish.macros && dish.macros.carbs)}</span>
+                                                <span>F: {(dish.macros && dish.macros.fat)}</span>
                                             </div>
                                         </div>
                                         <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest ${dish.suitable ? 'bg-brand-teal/20 text-brand-teal' : 'bg-brand-coral/20 text-brand-coral'}`}>
@@ -1671,10 +1671,10 @@ const SafeLens = () => {
                     <div className="space-y-6">
                         <div className="flex justify-between items-end px-2">
                             <h4 className="text-[9px] uppercase tracking-widest text-slate-500 font-black">Composition Breakdown</h4>
-                            <span className="text-[10px] text-slate-600 font-bold">{data.ingredients?.length || 0} Items</span>
+                            <span className="text-[10px] text-slate-600 font-bold">{(data.ingredients ? data.ingredients.length : 0) || 0} Items</span>
                         </div>
                         <div className="space-y-2">
-                            {data.ingredients?.map((item, idx) => <IngredientChip key={idx} item={item} />)}
+                            {(data.ingredients || []).map((item, idx) => <IngredientChip key={idx} item={item} />)}
                         </div>
                     </div>
                 )}
