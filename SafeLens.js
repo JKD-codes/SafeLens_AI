@@ -1330,8 +1330,8 @@ const SafeLens = () => {
             <div className="space-y-6 animate-slide-up pb-24">
                 <div className="glass p-6 sm:p-8 rounded-[2.5rem] border-white/5 relative overflow-hidden">
                     <div className="flex items-center gap-5 mb-8">
-                        <div className="w-16 h-16 rounded-2xl bg-brand-teal/10 flex items-center justify-center text-brand-teal shadow-inner">
-                            <Icon name="profile" className="w-8 h-8" />
+                        <div className="w-16 h-16 rounded-2xl bg-brand-teal/10 flex items-center justify-center shadow-inner overflow-hidden border border-brand-teal/20">
+                            <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${profile.name || 'User'}&backgroundColor=0f172a,1e293b&radius=50`} alt="Profile" className="w-full h-full object-cover p-1" />
                         </div>
                         <div>
                             <h2 className="text-2xl font-black font-header tracking-tight text-white">Health Profile</h2>
@@ -1723,14 +1723,6 @@ const SafeLens = () => {
                             <span className="text-brand-teal">Safe</span>Lens
                         </h1>
                         <p className="text-[9px] uppercase tracking-[0.3em] font-black text-slate-500 mt-0.5">AI Health Guard</p>
-                        <div className="mt-4 flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                <span className="text-brand-teal text-xs">✓</span> Ingredient Database
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                <span className="text-brand-teal text-xs">✓</span> Allergy Detection
-                            </div>
-                        </div>
                     </div>
 
                     {/* Navigation Links */}
