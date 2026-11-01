@@ -42,82 +42,375 @@ const ALLERGY_PRESETS = ['Nuts', 'Dairy', 'Gluten', 'Soy', 'Shellfish', 'Eggs'];
 const CONDITION_PRESETS = ['Diabetes', 'Hypertension', 'PCOD', 'Thyroid', 'Heart Disease', 'Kidney Disease'];
 
 // --- Offline Ingredients Database ---
+// Test script to build and verify the expanded OFFLINE_INGREDIENTS dataset
+
 const OFFLINE_INGREDIENTS = {
-    // Food Additives & Oils (Harmful/Concerning)
+    // === SUGARS & REFINED SWEETENERS ===
     'sugar': { status: 'Harmful', reason: 'High glycemic index. Spikes blood glucose rapidly and increases risk of type 2 diabetes, obesity, and cardiovascular inflammation.', substitute: 'Stevia, monk fruit, or raw honey in moderation.' },
     'high fructose corn syrup': { status: 'Extremely Harmful', reason: 'Highly processed fructose sweetener linked directly to fatty liver disease, systemic obesity, insulin resistance, and metabolic syndrome.', substitute: 'Natural maple syrup, dates, or apple puree.' },
     'hfcs': { status: 'Extremely Harmful', reason: 'Abbreviation for High Fructose Corn Syrup. Promotes visceral fat deposition, elevated triglycerides, and hepatic inflammation.', substitute: 'Organic coconut sugar or stevia.' },
+    'corn syrup': { status: 'Harmful', reason: 'Refined glucose-dense sweetener. Accelerates insulin resistance and increases visceral adiposity.', substitute: 'Pure maple syrup or date paste.' },
+    'liquid glucose': { status: 'Harmful', reason: 'Concentrated hydrolyzed starch syrup with a very high glycemic index. Triggers rapid glucose spikes.', substitute: 'Natural fruit purees or unrefined stevia.' },
+    'invert sugar': { status: 'Harmful', reason: 'Mixture of glucose and fructose created by splitting sucrose. Contributes to dental caries, fatty liver, and metabolic stress.', substitute: 'Raw honey or blackstrap molasses.' },
+    'invert syrup': { status: 'Harmful', reason: 'Chemically cleaved sugar syrup designed to retain moisture and sweetness in ultra-processed snacks. Promotes insulin surges.', substitute: 'Mashed banana or applesauce.' },
+    'dextrose': { status: 'Harmful', reason: 'Pure D-glucose. Chemically identical to blood sugar, causing instant glycemic spikes and pancreatic stress.', substitute: 'Whole fresh fruits.' },
+    'maltodextrin': { status: 'Harmful', reason: 'Extremely high glycemic index (105-185, higher than table sugar). Spikes blood sugar faster than sugar, alters gut microbiota, and suppresses beneficial Bifidobacteria.', substitute: 'Tapioca starch or almond meal.' },
+    'fructose': { status: 'Harmful', reason: 'Excess isolated fructose is metabolized exclusively by the liver into triglycerides, promoting non-alcoholic fatty liver disease (NAFLD).', substitute: 'Whole fruits with intact dietary fiber.' },
+    'sucrose': { status: 'Harmful', reason: 'Refined table sugar. Promotes dental cavities, metabolic dysregulation, and chronic systemic inflammation.', substitute: 'Monk fruit extract.' },
+    'maltose': { status: 'Harmful', reason: 'Disaccharide composed of two glucose units. Rapidly absorbed, inducing high insulin demand.', substitute: 'Cinnamon or vanilla bean.' },
+
+    // === ARTIFICIAL SWEETENERS & SUGAR ALCOHOLS ===
+    'aspartame': { status: 'Harmful', reason: 'Artificial sweetener. Breaks down into phenylalanine, aspartic acid, and toxic methanol. Associated with neurotoxicity markers, headaches, and gut microbiome disruption.', substitute: 'Organic green stevia leaf.' },
+    'ins 951': { status: 'Harmful', reason: 'INS Code for Aspartame. Synthetic intense sweetener associated with metabolic dysregulation and gut dysbiosis.', substitute: 'Stevia or monk fruit.' },
+    'e951': { status: 'Harmful', reason: 'European code for Aspartame. Artificial sweetener linked to altered glucose tolerance and headaches.', substitute: 'Natural sweeteners.' },
+    'sucralose': { status: 'Moderate', reason: 'Chlorinated artificial sweetener. Can reduce beneficial gut bacteria counts by up to 50% and generate toxic chloropropanols when baked.', substitute: 'Monk fruit extract.' },
+    'ins 955': { status: 'Moderate', reason: 'INS Code for Sucralose. High-intensity non-caloric organochlorine sweetener linked to altered microbiome profile.', substitute: 'Stevia extract.' },
+    'e955': { status: 'Moderate', reason: 'European code for Sucralose. Chlorinated sugar derivative.', substitute: 'Monk fruit.' },
+    'acesulfame potassium': { status: 'Harmful', reason: 'Synthetic sweetener containing methylene chloride (a potential carcinogen used in manufacture). Associated with metabolic alterations.', substitute: 'Erythritol or stevia.' },
+    'acesulfame k': { status: 'Harmful', reason: 'Abbreviation for Acesulfame Potassium. Artificial intense sweetener linked to thyroid disruptions in animal studies.', substitute: 'Stevia leaf.' },
+    'ins 950': { status: 'Harmful', reason: 'INS Code for Acesulfame Potassium (Ace-K). Artificial chemical sweetener.', substitute: 'Monk fruit.' },
+    'e950': { status: 'Harmful', reason: 'European code for Acesulfame K.', substitute: 'Stevia.' },
+    'saccharin': { status: 'Moderate', reason: 'Old synthetic coal-tar sweetener. Can trigger hypersensitivity reactions in sulfa-allergic individuals and alter gut microbial flora.', substitute: 'Pure maple syrup.' },
+    'ins 954': { status: 'Moderate', reason: 'INS Code for Saccharin.', substitute: 'Stevia.' },
+    'e954': { status: 'Moderate', reason: 'European code for Saccharin.', substitute: 'Stevia.' },
+    'sorbitol': { status: 'Moderate', reason: 'Polyol / Sugar alcohol. Causes osmotic diarrhea, bloating, gas, and abdominal cramps if consumed in excessive quantities.', substitute: 'Small quantities of raw honey.' },
+    'ins 420': { status: 'Moderate', reason: 'INS Code for Sorbitol. Sugar alcohol that causes gastrointestinal laxative effects.', substitute: 'Natural fruit.' },
+    'xylitol': { status: 'Safe', reason: 'Natural birch/corn polyol. Dental-protective and low-glycemic, though toxic to dogs and can cause mild gas in humans in high doses.' },
+    'ins 967': { status: 'Safe', reason: 'INS Code for Xylitol. Sugar substitute beneficial for dental enamel.' },
+    'maltitol': { status: 'Moderate', reason: 'Sugar alcohol with significant glycemic index (35-52). High risk of bloating and digestive distress.', substitute: 'Erythritol.' },
+    'ins 965': { status: 'Moderate', reason: 'INS Code for Maltitol. Polyol sweetener known for gastrointestinal side effects.', substitute: 'Monk fruit.' },
+    'isomalt': { status: 'Moderate', reason: 'Sugar alcohol blend derived from beet sugar. Moderate laxative effect in large portions.', substitute: 'Stevia.' },
+    'polydextrose': { status: 'Moderate', reason: 'Synthetic polymer of glucose and sorbitol used as bulking agent. Can trigger flatulence and digestive upset.', substitute: 'Acacia fiber or psyllium husk.' },
+
+    // === UNHEALTHY OILS, TRANS FATS & HYDROGENATED LIPIDS ===
     'palm oil': { status: 'Harmful', reason: 'Very high in saturated palmitic acid (approx. 50%), which increases LDL cholesterol levels and poses significant cardiovascular risks.', substitute: 'Cold-pressed olive oil, avocado oil, or sunflower oil.' },
+    'palm olein': { status: 'Harmful', reason: 'Liquid fraction of palm oil high in saturated fatty acids. Promotes arterial endothelial inflammation and atherosclerosis.', substitute: 'Extra virgin olive oil or walnut oil.' },
     'palm kernel oil': { status: 'Harmful', reason: 'Highly saturated oil that raises blood cholesterol levels and contributes to plaque build-up in arteries.', substitute: 'Organic coconut oil or extra virgin olive oil.' },
     'hydrogenated vegetable oil': { status: 'Extremely Harmful', reason: 'Source of synthetic trans fats which lower HDL (good) cholesterol, elevate LDL (bad) cholesterol, and cause high arterial inflammation.', substitute: 'Unrefined cold-pressed oils.' },
-    'partially hydrogenated': { status: 'Extremely Harmful', reason: 'Contains trans fats. Strongly associated with heart attacks, strokes, insulin resistance, and systemic cellular inflammation.', substitute: 'Grass-fed butter, ghee, or cold-pressed seed oils.' },
+    'hydrogenated oil': { status: 'Extremely Harmful', reason: 'Hardened trans-fat rich oil associated with coronary heart disease, strokes, and insulin resistance.', substitute: 'Cold-pressed avocado oil or grass-fed butter.' },
+    'partially hydrogenated': { status: 'Extremely Harmful', reason: 'Contains industrial trans fats. Strongly associated with heart attacks, strokes, insulin resistance, and systemic cellular inflammation.', substitute: 'Grass-fed butter, ghee, or cold-pressed seed oils.' },
     'trans fat': { status: 'Extremely Harmful', reason: 'Artificially structured lipid that significantly elevates the risk of coronary heart disease and increases inflammatory cytokines in the bloodstream.', substitute: 'Healthy monounsaturated fats like olive oil.' },
-    'monosodium glutamate': { status: 'Moderate', reason: 'Flavor enhancer that may cause headaches, sweating, numbness, and flushing in sensitive individuals (MSG symptom complex).', substitute: 'Nutritional yeast, sea salt, or natural spices.' },
-    'msg': { status: 'Moderate', reason: 'Abbreviation for Monosodium Glutamate. Can trigger neurological excitotoxicity in highly sensitive individuals or cause mild allergic reactions.', substitute: 'Garlic powder, onion powder, or tamari.' },
-    'sodium benzoate': { status: 'Moderate', reason: 'Chemical preservative. Can react with vitamin C (ascorbic acid) under heat/light to form benzene, a known cellular carcinogen.', substitute: 'Natural preservation methods like fermentation or pasteurization.' },
-    'potassium sorbate': { status: 'Moderate', reason: 'Widely used synthetic food preservative. Generally safe, but excessive intake can cause mild skin irritation or allergic reactions in rare cases.', substitute: 'Fresh, preservative-free alternatives.' },
-    'aspartame': { status: 'Harmful', reason: 'Artificial sweetener. Undergoes metabolism into phenylalanine, aspartic acid, and toxic methanol. Associated with headaches, mood shifts, and gut dysbiosis.', substitute: 'Stevia leaf extract or erythritol.' },
-    'sucralose': { status: 'Moderate', reason: 'Chlorinated artificial sweetener. Can reduce beneficial gut bacteria counts by up to 50% and release toxic compounds when heated.', substitute: 'Monk fruit extract.' },
-    'saccharin': { status: 'Moderate', reason: 'Old synthetic sweetener. Can cause mild allergic reactions in individuals sensitive to sulfonamides.', substitute: 'Pure maple syrup.' },
+    'vanaspati': { status: 'Extremely Harmful', reason: 'Hydrogenated vegetable fat commonly loaded with trans fatty acids. Major contributor to premature coronary artery disease in South Asia.', substitute: 'Pure cow ghee or cold-pressed mustard oil.' },
+    'shortening': { status: 'Extremely Harmful', reason: 'Solid industrial fat formulated with hydrogenated lipids. Accelerates endothelial dysfunction and arterial plaque formation.', substitute: 'Grass-fed butter or coconut oil.' },
+    'interesterified fat': { status: 'Harmful', reason: 'Chemically rearranged industrial fat developed to replace trans fats. May adversely affect carbohydrate metabolism and immune signaling.', substitute: 'Natural unrefined cold-pressed oils.' },
+    'edible vegetable oil': { status: 'Concerning', reason: 'Generic commercial term usually concealing heavily refined, solvent-extracted, high-omega-6 palm or seed oils. Pro-inflammatory when oxidized.', substitute: 'Single-source cold-pressed olive or avocado oil.' },
+    'vegetable fat': { status: 'Harmful', reason: 'Industrial fat fraction, typically palm-derived, rich in saturated fats and refined without micronutrients.', substitute: 'Cold-pressed unrefined nut or fruit oils.' },
+    'cottonseed oil': { status: 'Harmful', reason: 'Extremely high in inflammatory omega-6 linoleic acid; frequently derived from heavily pesticide-sprayed crops and may contain gossypol residues.', substitute: 'Olive oil or coconut oil.' },
+    'soybean oil': { status: 'Concerning', reason: 'Highly refined seed oil excessive in omega-6 fatty acids. Imbalances the omega-6 to omega-3 ratio, driving systemic inflammation.', substitute: 'Extra virgin olive oil or ghee.' },
+    'canola oil': { status: 'Moderate', reason: 'Processed rapeseed oil extracted with chemical solvents (hexane) and high heat. Susceptible to lipid peroxidation.', substitute: 'Cold-pressed extra virgin olive oil.' },
+    'rapeseed oil': { status: 'Moderate', reason: 'Refined cooking oil subjected to chemical bleaching and deodorization.', substitute: 'Avocado oil.' },
+    'margarine': { status: 'Harmful', reason: 'Ultra-processed butter imitation synthesized from refined vegetable oils, emulsifiers, and artificial flavorings.', substitute: 'Organic cultured butter or ghee.' },
+
+    // === REFINED FLOURS & STARCHES ===
     'maida': { status: 'Harmful', reason: 'Refined wheat flour stripped of fiber, bran, and essential nutrients. Causes high glycemic spikes and stresses insulin production.', substitute: 'Whole wheat flour, almond flour, or oat flour.' },
     'refined wheat flour': { status: 'Harmful', reason: 'Stripped grain flour. Quickly converts to glucose, promoting fat storage and increasing the glycemic index of the product.', substitute: 'Quinoa flour, coconut flour, or finger millet (ragi) flour.' },
     'all purpose flour': { status: 'Harmful', reason: 'Highly processed flour that lacks dietary fiber, causing rapid digestive breakdown and sudden spikes in blood sugar.', substitute: 'Spelt flour or chickpea flour.' },
+    'bleached flour': { status: 'Harmful', reason: 'Flour chemically bleached with chlorine dioxide or benzoyl peroxide, producing alloxan residues that harm pancreatic beta cells.', substitute: 'Unbleached whole grain flour.' },
+    'enriched flour': { status: 'Moderate', reason: 'Refined white flour where synthetic vitamins are added back after milling stripped the natural nutrients.', substitute: '100% whole grain stone-ground flour.' },
+    'modified starch': { status: 'Moderate', reason: 'Chemically or enzymatically altered starch used as a stabilizer. Rapidly digested into simple sugars and can cause digestive sensitivity.', substitute: 'Arrowroot powder or organic cornstarch.' },
+    'modified food starch': { status: 'Moderate', reason: 'Heavily processed starch additive with high glycemic load.', substitute: 'Organic potato starch or ground chia.' },
+    'corn starch': { status: 'Moderate', reason: 'Pure refined carbohydrate stripped of protein and fiber. Can provoke fast blood sugar spikes.', substitute: 'Almond flour or psyllium husk.' },
+
+    // === PRESERVATIVES, CHEMICAL ANTIOXIDANTS & SALTS ===
+    'tbhq': { status: 'Extremely Harmful', reason: 'Tertiary Butylhydroquinone. Synthetic petroleum-derived antioxidant preservative. Linked to immune system impairment, vision disturbances, and cellular DNA damage.', substitute: 'Natural mixed tocopherols (Vitamin E) or rosemary extract.' },
+    'ins 319': { status: 'Extremely Harmful', reason: 'INS Code for TBHQ (Tertiary Butylhydroquinone). High-hazard petroleum antioxidant preservative.', substitute: 'Vitamin E or rosemary extract.' },
+    'e319': { status: 'Extremely Harmful', reason: 'European code for TBHQ.', substitute: 'Natural antioxidants.' },
+    'bha': { status: 'Harmful', reason: 'Butylated Hydroxyanisole. Synthetic antioxidant preservative. Classified by NTP as a reasonably anticipated human carcinogen and endocrine disruptor.', substitute: 'Vitamin E (tocopherols) or rosemary extract.' },
+    'ins 320': { status: 'Harmful', reason: 'INS Code for BHA (Butylated Hydroxyanisole). Known hormone-disrupting preservative.', substitute: 'Rosemary extract.' },
+    'e320': { status: 'Harmful', reason: 'European code for BHA.', substitute: 'Vitamin E.' },
+    'bht': { status: 'Harmful', reason: 'Butylated Hydroxytoluene. Chemical preservative. Can disrupt hormonal balance, mimic estrogen, and place heavy metabolic load on liver enzymes.', substitute: 'Natural mixed tocopherols.' },
+    'ins 321': { status: 'Harmful', reason: 'INS Code for BHT (Butylated Hydroxytoluene). Synthetic preservative with endocrine-disrupting concerns.', substitute: 'Ascorbic acid.' },
+    'e321': { status: 'Harmful', reason: 'European code for BHT.', substitute: 'Natural tocopherols.' },
+    'propyl gallate': { status: 'Harmful', reason: 'Synthetic antioxidant preservative. Suspected endocrine disruptor that can trigger allergic skin and respiratory reactions.', substitute: 'Natural citrus bioflavonoids.' },
+    'ins 310': { status: 'Harmful', reason: 'INS Code for Propyl Gallate.', substitute: 'Vitamin E.' },
+    'sodium benzoate': { status: 'Moderate', reason: 'Chemical preservative. Can react with vitamin C (ascorbic acid) under heat/light to form benzene, a known cellular carcinogen.', substitute: 'Natural preservation methods like fermentation or pasteurization.' },
+    'ins 211': { status: 'Moderate', reason: 'INS Code for Sodium Benzoate. Common chemical antimicrobial preservative.', substitute: 'Citric acid or cold pasteurization.' },
+    'e211': { status: 'Moderate', reason: 'European code for Sodium Benzoate.', substitute: 'Natural preservation.' },
+    'potassium benzoate': { status: 'Moderate', reason: 'Chemical preservative in soft drinks. Can react with ascorbic acid to form carcinogenic benzene.', substitute: 'Refrigerated cold-pressed juice.' },
+    'ins 212': { status: 'Moderate', reason: 'INS Code for Potassium Benzoate.', substitute: 'Natural organic acids.' },
+    'potassium sorbate': { status: 'Moderate', reason: 'Widely used synthetic food preservative. Generally safe in tiny amounts, but excessive intake can cause mild skin irritation or allergic reactions in sensitive people.', substitute: 'Fresh, preservative-free alternatives.' },
+    'ins 202': { status: 'Moderate', reason: 'INS Code for Potassium Sorbate. Synthetic mold and yeast inhibitor.', substitute: 'Natural vinegar or lactic acid.' },
+    'e202': { status: 'Moderate', reason: 'European code for Potassium Sorbate.', substitute: 'Fresh food preservation.' },
+    'sodium metabisulphite': { status: 'Harmful', reason: 'Chemical bleaching agent and dough conditioner. Severe trigger for asthmatic bronchospasm, hives, and sulfur sensitivity.', substitute: 'Natural sourdough fermentation or ascorbic acid.' },
+    'sodium metabisulfite': { status: 'Harmful', reason: 'Sulfite preservative and flour treatment. Known to trigger acute respiratory distress and severe allergic reactions in asthmatics.', substitute: 'Vitamin C or enzymatic dough conditioners.' },
+    'ins 223': { status: 'Harmful', reason: 'INS Code for Sodium Metabisulphite. Sulfite allergen and chemical dough conditioner.', substitute: 'Ascorbic acid.' },
+    'e223': { status: 'Harmful', reason: 'European code for Sodium Metabisulfite. Sulfite preservative.', substitute: 'Natural fermentation.' },
+    'potassium metabisulphite': { status: 'Harmful', reason: 'Sulfite preservative. Destroys thiamine (Vitamin B1) and induces severe asthmatic reactions.', substitute: 'Sterile filtration.' },
+    'ins 224': { status: 'Harmful', reason: 'INS Code for Potassium Metabisulphite.', substitute: 'Ascorbic acid.' },
+    'sulfur dioxide': { status: 'Harmful', reason: 'Gas preservative used on dried fruits and wine. Strong respiratory irritant and allergen for sensitive airways.', substitute: 'Sun-dried unsulfured organic fruits.' },
+    'ins 220': { status: 'Harmful', reason: 'INS Code for Sulfur Dioxide.', substitute: 'Unsulfured processing.' },
+    'sodium nitrite': { status: 'Harmful', reason: 'Curing agent that forms carcinogenic nitrosamines in the stomach. Harms oxygen transport in red blood cells if consumed in excess.', substitute: 'Uncured meats preserved with sea salt.' },
+    'ins 250': { status: 'Harmful', reason: 'INS Code for Sodium Nitrite. Preservative used in cured meats; linked to colorectal cancer risk.', substitute: 'Celery powder or fresh organic meats.' },
+    'e250': { status: 'Harmful', reason: 'European code for Sodium Nitrite.', substitute: 'Nitrite-free meats.' },
+    'sodium nitrate': { status: 'Harmful', reason: 'Preservative used in processed meats. Converts into carcinogenic nitrosamines during digestion, increasing colorectal cancer risk.', substitute: 'Celery powder or fresh organic meats.' },
+    'ins 251': { status: 'Harmful', reason: 'INS Code for Sodium Nitrate.', substitute: 'Fresh unpreserved meats.' },
+    'calcium propionate': { status: 'Moderate', reason: 'Bread mold inhibitor. Associated with irritability, restlessness, sleep disturbance, and inattention in sensitive children.', substitute: 'Naturally fermented sourdough bread.' },
+    'ins 282': { status: 'Moderate', reason: 'INS Code for Calcium Propionate. Anti-fungal bread preservative.', substitute: 'Sourdough starter.' },
+    'e282': { status: 'Moderate', reason: 'European code for Calcium Propionate.', substitute: 'Fresh bread baking.' },
+    'sodium propionate': { status: 'Moderate', reason: 'Propionate salt preservative used in baked goods. May induce metabolic dysregulation.', substitute: 'Clean refrigeration or sourdough.' },
+    'ins 281': { status: 'Moderate', reason: 'INS Code for Sodium Propionate.', substitute: 'Fresh bakery goods.' },
+    'potassium bromate': { status: 'Extremely Harmful', reason: 'Flour improver classified as a Category 2B carcinogen. Banned in EU, Canada, India, and China due to renal and thyroid tumor risks.', substitute: 'Ascorbic acid or clean sourdough.' },
+
+    // === ARTIFICIAL COLORS & CHEMICAL DYES ===
     'tartrazine': { status: 'Harmful', reason: 'Yellow 5 synthetic azo dye. Strongly associated with hyperactivity in children, hives, asthma, and severe allergic reactions.', substitute: 'Natural colorings like turmeric or beta-carotene.' },
+    'ins 102': { status: 'Harmful', reason: 'INS Code for Tartrazine (Yellow 5). Petroleum-derived azo dye linked to behavioral issues in kids.', substitute: 'Curcumin / Turmeric extract.' },
+    'e102': { status: 'Harmful', reason: 'European code for Tartrazine.', substitute: 'Beta-carotene.' },
     'sunset yellow': { status: 'Harmful', reason: 'Yellow 6 food dye. Linked to hypersensitivity reactions, skin rashes, and behavioral changes/hyperactivity in children.', substitute: 'Annatto or carrot extract.' },
+    'ins 110': { status: 'Harmful', reason: 'INS Code for Sunset Yellow FCF (Yellow 6). Synthetic food dye requiring warning labels in EU.', substitute: 'Paprika oleoresin.' },
+    'e110': { status: 'Harmful', reason: 'European code for Sunset Yellow.', substitute: 'Carrot juice.' },
     'allura red': { status: 'Harmful', reason: 'Red 40 synthetic coal-tar dye. Associated with childhood hyperactivity, migraines, and gut mucosal inflammation in animal trials.', substitute: 'Beetroot juice powder or elderberry extract.' },
+    'ins 129': { status: 'Harmful', reason: 'INS Code for Allura Red (Red 40). Azo dye linked to intestinal bowel inflammation markers.', substitute: 'Beetroot red.' },
+    'e129': { status: 'Harmful', reason: 'European code for Allura Red.', substitute: 'Anthocyanins.' },
+    'brilliant blue': { status: 'Harmful', reason: 'Blue 1 synthetic triarylmethane dye. Linked to allergic hypersensitivity, ADHD symptoms, and cellular mitochondrial inhibition.', substitute: 'Spirulina extract or butterfly pea flower.' },
+    'ins 133': { status: 'Harmful', reason: 'INS Code for Brilliant Blue FCF (Blue 1). Synthetic petroleum dye.', substitute: 'Spirulina.' },
+    'e133': { status: 'Harmful', reason: 'European code for Brilliant Blue.', substitute: 'Spirulina.' },
+    'carmoisine': { status: 'Harmful', reason: 'Red azo dye (Azorubine). Banned in the US and Canada. Linked to severe allergic dermatitis and hyperactivity in children.', substitute: 'Black carrot extract or beet juice.' },
+    'ins 122': { status: 'Harmful', reason: 'INS Code for Carmoisine / Azorubine. Synthetic red food color.', substitute: 'Beet extract.' },
+    'ponceau 4r': { status: 'Harmful', reason: 'Synthetic strawberry red coal-tar dye. Banned in the US. Linked to histamine release and asthmatic attacks.', substitute: 'Raspberry powder or red radish extract.' },
+    'ins 124': { status: 'Harmful', reason: 'INS Code for Ponceau 4R (Cochineal Red A). Synthetic red dye.', substitute: 'Beet juice.' },
+    'erythrosine': { status: 'Harmful', reason: 'Red 3 coal-tar dye. Demonstrated to cause thyroid tumors in animal studies; banned in cosmetics and topical drugs by FDA.', substitute: 'Natural vegetable juices.' },
+    'ins 127': { status: 'Harmful', reason: 'INS Code for Erythrosine (Red 3). Thyroid-disrupting food dye.', substitute: 'Beetroot extract.' },
+    'caramel color': { status: 'Harmful', reason: 'Manufactured with ammonia/sulfites (Class III & IV). Contains 4-methylimidazole (4-MEI), a chemical listed by IARC as a possible human carcinogen.', substitute: 'Natural roasted malt or uncolored foods.' },
+    'caramel colour': { status: 'Harmful', reason: 'Class IV caramel dye produced using chemical reagents; carries carcinogenic 4-MEI contaminant risk.', substitute: 'Natural carob or cocoa.' },
+    'ins 150d': { status: 'Harmful', reason: 'INS Code for Ammonia Sulfite Caramel (Class IV). Frequently contaminated with 4-MEI, a potential carcinogen.', substitute: 'Natural cocoa or molasses.' },
+    'e150d': { status: 'Harmful', reason: 'European code for Caramel IV.', substitute: 'Natural coloring.' },
+    'ins 150c': { status: 'Harmful', reason: 'INS Code for Ammonia Caramel (Class III). Contains 2-acetyl-4-tetrahydroxybutylimidazole which can depress immune lymphocytes.', substitute: 'Organic cocoa.' },
+    'titanium dioxide': { status: 'Harmful', reason: 'White pigment nanoparticle. Formally banned in food across the European Union (E171) due to genotoxicity and DNA strand accumulation concerns.', substitute: 'Calcium carbonate or natural rice starch.' },
+    'ins 171': { status: 'Harmful', reason: 'INS Code for Titanium Dioxide. Genotoxic nanoparticle pigment banned by the EFSA in food products.', substitute: 'Natural chalk or cornstarch.' },
+    'e171': { status: 'Harmful', reason: 'European code for Titanium Dioxide. Banned in EU foods.', substitute: 'Uncolored options.' },
+
+    // === FLAVOR ENHANCERS & INDUSTRIAL ADDITIVES ===
+    'monosodium glutamate': { status: 'Moderate', reason: 'Flavor enhancer that may cause headaches, sweating, numbness, and flushing in sensitive individuals (MSG symptom complex).', substitute: 'Nutritional yeast, sea salt, or natural spices.' },
+    'msg': { status: 'Moderate', reason: 'Abbreviation for Monosodium Glutamate. Can trigger neurological excitotoxicity in highly sensitive individuals or cause mild allergic reactions.', substitute: 'Garlic powder, onion powder, or tamari.' },
+    'ins 621': { status: 'Moderate', reason: 'INS Code for Monosodium Glutamate (MSG). Excitotoxic flavor additive.', substitute: 'Mushroom powder or nutritional yeast.' },
+    'e621': { status: 'Moderate', reason: 'European code for MSG.', substitute: 'Sea salt and herbs.' },
+    'disodium inosinate': { status: 'Moderate', reason: 'Purine-based flavor enhancer. Synergizes with MSG; degrades into uric acid and should be avoided by individuals with gout or kidney stones.', substitute: 'Dried shiitake mushrooms.' },
+    'ins 631': { status: 'Moderate', reason: 'INS Code for Disodium Inosinate. Purine flavor enhancer.', substitute: 'Natural herbs.' },
+    'e631': { status: 'Moderate', reason: 'European code for Disodium Inosinate.', substitute: 'Natural seasonings.' },
+    'disodium guanylate': { status: 'Moderate', reason: 'Nucleotide flavor additive. Converts to purines/uric acid in the body; triggers gout flare-ups and hyperactivity.', substitute: 'Kelp flakes or nutritional yeast.' },
+    'ins 627': { status: 'Moderate', reason: 'INS Code for Disodium Guanylate.', substitute: 'Natural spices.' },
+    'e627': { status: 'Moderate', reason: 'European code for Disodium Guanylate.', substitute: 'Rock salt.' },
+    'ins 635': { status: 'Moderate', reason: 'INS Code for Disodium 5-Ribonucleotides (blend of 627 and 631). Can cause itchy skin rashes and gout flare-ups.', substitute: 'Natural vegetable seasonings.' },
+    'e635': { status: 'Moderate', reason: 'European code for Disodium 5-ribonucleotides.', substitute: 'Natural herbs.' },
+    'hydrolyzed vegetable protein': { status: 'Moderate', reason: 'Plant protein chemically broken down with hydrochloric acid, naturally containing high levels of free glutamates (hidden MSG).', substitute: 'Organic bone broth or mushroom bouillon.' },
+    'hvp': { status: 'Moderate', reason: 'Abbreviation for Hydrolyzed Vegetable Protein. Source of hidden free glutamic acid.', substitute: 'Natural spice blend.' },
+    'hydrolyzed soy protein': { status: 'Moderate', reason: 'Hydrolyzed soy isolate loaded with unbound glutamates and processed soy allergens.', substitute: 'Real miso or tamari.' },
+    'yeast extract': { status: 'Moderate', reason: 'Concentrated yeast cell extract packed with unbound free glutamate. Used to mimic MSG flavoring.', substitute: 'Fresh aromatic herbs.' },
+    'autolyzed yeast': { status: 'Moderate', reason: 'Self-digested yeast cell extract creating artificial savory umami taste.', substitute: 'Garlic and onion.' },
+    'artificial flavour': { status: 'Harmful', reason: 'Synthetic proprietary blend of synthetic esters, aldehydes, and solvent carriers designed to chemically hijack taste buds.', substitute: 'Pure organic vanilla extract or real fruit purees.' },
+    'artificial flavor': { status: 'Harmful', reason: 'Chemical concoction synthesized in a lab from petroleum and chemical fractions to imitate food aromas.', substitute: 'Real spices, citrus zest, or cocoa.' },
+    'artificial flavouring': { status: 'Harmful', reason: 'Synthetic aroma compound containing chemical stabilizers and carrier solvents.', substitute: 'Natural extracts.' },
+    'artificial flavoring': { status: 'Harmful', reason: 'Synthetic chemical flavor blend.', substitute: 'Real whole foods.' },
+    'nature identical flavour': { status: 'Moderate', reason: 'Synthesized chemically in a lab to possess the same chemical formula as natural food molecules.', substitute: '100% natural organic extracts.' },
+    'vanillin': { status: 'Moderate', reason: 'Synthetic vanilla mimic often produced chemically from wood pulp (lignin) or petrochemical guaiacol.', substitute: 'Real Madagascar bourbon vanilla bean.' },
+
+    // === EMULSIFIERS, THICKENERS & TEXTURIZERS ===
     'carrageenan': { status: 'Moderate', reason: 'Thickener derived from red seaweed. Linked to intestinal inflammation, ulcerative colitis-like symptoms, and glucose intolerance.', substitute: 'Agar agar, pectin, or guar gum.' },
-    'sodium nitrate': { status: 'Harmful', reason: 'Preservative used in processed meats. Converts into highly carcinogenic nitrosamines during digestion, increasing colorectal cancer risk.', substitute: 'Celery powder or fresh organic meats.' },
-    'sodium nitrite': { status: 'Harmful', reason: 'Curing agent that forms cancer-causing compounds in the stomach. Harms oxygen transport in red blood cells if consumed in excess.', substitute: 'Uncured meats preserved with sea salt.' },
-    'bha': { status: 'Harmful', reason: 'Butylated Hydroxyanisole. Synthetic antioxidant preservative. Classified as a possible human endocrine disruptor and carcinogen.', substitute: 'Vitamin E (tocopherols) or rosemary extract.' },
-    'bht': { status: 'Harmful', reason: 'Butylated Hydroxytoluene. Chemical preservative. Can disrupt hormonal balance and mimic estrogen, putting stress on liver enzymes.', substitute: 'Natural mixed tocopherols.' },
-    
-    // Healthy Foods (Safe/Beneficial)
+    'ins 407': { status: 'Moderate', reason: 'INS Code for Carrageenan. Thickener associated with intestinal barrier disruption and colitis.', substitute: 'Pectin or locust bean gum.' },
+    'e407': { status: 'Moderate', reason: 'European code for Carrageenan.', substitute: 'Pectin.' },
+    'polysorbate 80': { status: 'Harmful', reason: 'Synthetic emulsifier shown in clinical research to erode the protective intestinal mucus layer, promoting gut permeability and colitis.', substitute: 'Sunflower lecithin or egg yolk.' },
+    'ins 433': { status: 'Harmful', reason: 'INS Code for Polysorbate 80. Gut-barrier eroding synthetic emulsifier.', substitute: 'Sunflower lecithin.' },
+    'e433': { status: 'Harmful', reason: 'European code for Polysorbate 80.', substitute: 'Natural lecithin.' },
+    'polysorbate 60': { status: 'Harmful', reason: 'Industrial food emulsifier that degrades gut microbiome integrity.', substitute: 'Organic egg lecithin.' },
+    'ins 435': { status: 'Harmful', reason: 'INS Code for Polysorbate 60.', substitute: 'Clean culinary fats.' },
+    'carboxymethyl cellulose': { status: 'Moderate', reason: 'Synthetic cellulose gum (CMC). Promotes systemic low-grade gut inflammation and alters intestinal microbiota.', substitute: 'Natural guar gum or ground flaxseed.' },
+    'cmc': { status: 'Moderate', reason: 'Abbreviation for Carboxymethyl Cellulose. Synthetic thickener linked to intestinal inflammation.', substitute: 'Psyllium husk.' },
+    'ins 466': { status: 'Moderate', reason: 'INS Code for Sodium Carboxymethyl Cellulose.', substitute: 'Pectin.' },
+    'e466': { status: 'Moderate', reason: 'European code for CMC.', substitute: 'Guar gum.' },
+    'datem': { status: 'Moderate', reason: 'Diacetyl Tartaric Acid Esters of Mono- and Diglycerides. Industrial dough emulsifier used to increase bread volume artificially.', substitute: 'Traditional artisan sourdough fermentation.' },
+    'ins 472e': { status: 'Moderate', reason: 'INS Code for DATEM dough emulsifier.', substitute: 'Butter or olive oil.' },
+    'e472e': { status: 'Moderate', reason: 'European code for DATEM.', substitute: 'Organic olive oil.' },
+    'mono- and diglycerides': { status: 'Moderate', reason: 'Processed fat emulsifier that frequently harbors hidden trans-fat impurities not legally mandated on nutrition tables.', substitute: 'Pure egg yolk or cold-pressed oils.' },
+    'ins 471': { status: 'Moderate', reason: 'INS Code for Mono- and Diglycerides of fatty acids. Common bakery emulsifier.', substitute: 'Sunflower lecithin.' },
+    'e471': { status: 'Moderate', reason: 'European code for E471 emulsifier.', substitute: 'Organic butter.' },
+    'ins 476': { status: 'Moderate', reason: 'INS Code for PGPR (Polyglycerol Polyricinoleate). Cheap industrial castor-oil emulsifier substituted for real cocoa butter in chocolate.', substitute: 'Pure cocoa butter.' },
+    'e476': { status: 'Moderate', reason: 'European code for PGPR in commercial confectionery.', substitute: 'Real cocoa butter.' },
+    'soy lecithin': { status: 'Safe', reason: 'Natural phospholipid emulsifier extracted from soybeans. Generally safe, rich in choline, though may trigger sensitivity in severe soy allergies.' },
+    'ins 322': { status: 'Safe', reason: 'INS Code for Lecithin (Soy/Sunflower). Natural phospholipid that supports cellular membrane function.' },
+    'e322': { status: 'Safe', reason: 'European code for Lecithin.', substitute: 'Natural egg yolk.' },
+    'guar gum': { status: 'Safe', reason: 'Soluble prebiotic dietary fiber extracted from guar beans. Helps normalize blood sugar and feed beneficial gut flora in moderate amounts.' },
+    'ins 412': { status: 'Safe', reason: 'INS Code for Guar Gum. Natural prebiotic legume-derived thickener.' },
+    'e412': { status: 'Safe', reason: 'European code for Guar Gum.' },
+    'xanthan gum': { status: 'Safe', reason: 'Natural polysaccharide produced by bacterial fermentation. Safe gluten-free binder; may cause mild gas only in very large quantities.' },
+    'ins 415': { status: 'Safe', reason: 'INS Code for Xanthan Gum.' },
+    'e415': { status: 'Safe', reason: 'European code for Xanthan Gum.' },
+    'pectin': { status: 'Safe', reason: 'Natural soluble fruit fiber that supports bowel regularity, binds cholesterol, and acts as a beneficial prebiotic.' },
+    'ins 440': { status: 'Safe', reason: 'INS Code for Pectin. Healthy natural plant fiber.' },
+    'raising agent': { status: 'Safe', reason: 'Culinary leavening compound (such as baking soda or baking powder) used to aerate dough.' },
+    'ins 500': { status: 'Safe', reason: 'INS Code for Sodium Carbonates / Baking Soda. Safe culinary leavening and alkalizing agent.' },
+    'ins 500(ii)': { status: 'Safe', reason: 'INS Code for Sodium Bicarbonate (Baking Soda). Clean, non-toxic leavening agent.' },
+    'e500': { status: 'Safe', reason: 'European code for Baking Soda.' },
+    'ins 503': { status: 'Safe', reason: 'INS Code for Ammonium Carbonates (Baker\'s Ammonia). Traditional leavening agent that completely evaporates during baking.' },
+    'ins 503(ii)': { status: 'Safe', reason: 'INS Code for Ammonium Bicarbonate. Clean traditional leavening salt.' },
+    'e503': { status: 'Safe', reason: 'European code for Ammonium Carbonates.' },
+    'citric acid': { status: 'Safe', reason: 'Natural organic fruit acid used for tartness and microbial stabilization. Safe, though heavily manufactured forms derived from Aspergillus niger can occasionally trigger sensitivities.' },
+    'ins 330': { status: 'Safe', reason: 'INS Code for Citric Acid. Common benign acidity regulator.' },
+    'e330': { status: 'Safe', reason: 'European code for Citric Acid.' },
+    'salt': { status: 'Safe', reason: 'Essential electrolyte (sodium chloride) required for nerve signaling, fluid balance, and muscle contraction. Moderate daily intake according to your health profile.' },
+    'iodised salt': { status: 'Safe', reason: 'Table salt fortified with essential potassium iodate to support thyroid hormone production and prevent goiters.' },
+    'iodized salt': { status: 'Safe', reason: 'Dietary sodium chloride fortified with micronutrient iodine.' },
+    'sea salt': { status: 'Safe', reason: 'Minimally processed natural mineral salt containing trace minerals like magnesium and potassium.' },
+    'rock salt': { status: 'Safe', reason: 'Himalayan or sendha namak rock crystal containing trace minerals.' },
+
+    // === BENEFICIAL WHOLE FOODS & INGREDIENTS ===
     'whole wheat': { status: 'Safe', reason: 'Excellent source of dietary fiber, complex carbohydrates, B-vitamins, and minerals. Promotes digestive health and stable insulin levels.' },
     'oats': { status: 'Safe', reason: 'Rich in beta-glucan soluble fiber, which actively lowers LDL cholesterol, regulates blood glucose levels, and supports gut microflora.' },
+    'rolled oats': { status: 'Safe', reason: 'Clean whole-grain fiber source that supports cardiovascular wellness and steady energy.' },
     'quinoa': { status: 'Safe', reason: 'A complete plant protein containing all nine essential amino acids. Rich in iron, magnesium, fiber, and powerful antioxidants.' },
     'chia seeds': { status: 'Safe', reason: 'Superfood packed with alpha-linolenic acid (omega-3), soluble fiber, calcium, and antioxidants. Highly anti-inflammatory.' },
+    'flax seeds': { status: 'Safe', reason: 'Rich in lignans, omega-3 ALA, and mucilage fiber. Promotes hormonal balance and heart health.' },
     'almonds': { status: 'Safe', reason: 'High in monounsaturated fats, vitamin E, and magnesium. Supports heart health, lowers cholesterol, and acts as a pre-biotic.' },
     'walnuts': { status: 'Safe', reason: 'Rich in plant-based omega-3 fatty acids and polyphenols. Promotes cognitive health, reduces cardiovascular inflammation.' },
+    'cashews': { status: 'Safe', reason: 'Nutrient-dense nut rich in heart-healthy monounsaturated fats, copper, and magnesium.' },
+    'peanuts': { status: 'Safe', reason: 'Rich in protein, biotin, niacin, and resveratrol. High allergen risk for sensitive profiles.' },
     'spinach': { status: 'Safe', reason: 'Nutrient-dense leafy green rich in iron, calcium, folate, and vitamins A, C, and K. Supports bone health and vision.' },
     'water': { status: 'Safe', reason: 'The essential vehicle for life. Keeps the body hydrated, assists digestion, cushions joints, and flushes metabolic waste.' },
+    'carbonated water': { status: 'Safe', reason: 'Pure water infused with carbon dioxide gas. Zero calories and safe hydration.' },
     'green tea': { status: 'Safe', reason: 'Abundant in epigallocatechin gallate (EGCG) catechins, which are potent antioxidants that boost metabolism and protect cells.' },
-    
-    // Skincare / Cosmetic Chemicals (Concerning/Avoid)
+    'cacao': { status: 'Safe', reason: 'Raw chocolate rich in flavanols, magnesium, and mood-boosting theobromine. Strongly cardio-protective.' },
+    'cocoa': { status: 'Safe', reason: 'Antioxidant-dense plant powder supporting cardiovascular nitric oxide synthesis.' },
+    'cocoa butter': { status: 'Safe', reason: 'Healthy unrefined plant lipid rich in stearic acid, which exhibits a neutral effect on blood cholesterol.' },
+    'cocoa solids': { status: 'Safe', reason: 'Natural flavanol-rich solids from cocoa beans supporting vascular elasticity.' },
+    'milk solids': { status: 'Safe', reason: 'Concentrated dairy proteins, calcium, and lactose from milk. High allergen trigger for dairy-sensitive profiles.' },
+    'whey protein': { status: 'Safe', reason: 'Complete, rapidly absorbed dairy protein rich in branched-chain amino acids (BCAAs) that stimulates muscle protein synthesis.' },
+    'whey': { status: 'Safe', reason: 'Liquid byproduct of milk curdling rich in immunoglobulins and minerals. Contains lactose.' },
+    'cheddar cheese': { status: 'Safe', reason: 'Cultured dairy protein and fat rich in calcium, vitamin K2, and bioavailable protein.' },
+    'onion powder': { status: 'Safe', reason: 'Dehydrated ground allium rich in quercetin antioxidants and prebiotic fructooligosaccharides.' },
+    'garlic powder': { status: 'Safe', reason: 'Ground allium rich in allicin, supporting healthy blood pressure and antimicrobial defenses.' },
+    'ginger': { status: 'Safe', reason: 'Potent anti-inflammatory rhizome containing gingerols that aid digestion and calm nausea.' },
+    'turmeric': { status: 'Safe', reason: 'Superfood spice packed with curcumin, an extraordinary natural anti-inflammatory polyphenol.' },
+    'cinnamon': { status: 'Safe', reason: 'Aromatic bark rich in cinnamaldehyde that enhances insulin receptor sensitivity.' },
+    'vanilla': { status: 'Safe', reason: 'Natural botanical orchid pod rich in antioxidant vanillic compounds.' },
+    'vanilla extract': { status: 'Safe', reason: 'Natural aqueous extract of cured vanilla beans.' },
+    'potatoes': { status: 'Safe', reason: 'Nutrient-rich tuber delivering potassium, vitamin C, and resistant starch when cooled.' },
+    'caffeine': { status: 'Safe', reason: 'Natural central nervous system stimulant. Boosts alertness and metabolic rate in moderation (up to 400mg/day).' },
+    'phosphoric acid': { status: 'Moderate', reason: 'Acidulant in dark sodas. Excess consumption is linked to lower bone mineral density and kidney stone formation due to altered calcium/phosphorus ratio.', substitute: 'Sparkling mineral water with fresh lemon.' },
+
+    // === SKINCARE & COSMETIC CHEMICALS (CONCERNING/AVOID) ===
     'methylparaben': { status: 'Avoid', reason: 'Synthetic preservative. Mimics estrogen in the body, binds to estrogen receptors, and is linked to endocrine disruption and breast tissue abnormalities.', substitute: 'Phenoxyethanol or organic preservatives like sodium phytate.' },
     'propylparaben': { status: 'Avoid', reason: 'Endocrine-disrupting preservative. Absorbs through the skin easily and disrupts reproductive hormones even at low levels.', substitute: 'Ethylhexylglycerin.' },
     'butylparaben': { status: 'Avoid', reason: 'High-hazard paraben derivative. Strongly mimics estrogen, impairs reproductive systems, and accumulates in aquatic life.', substitute: 'Sodium levulinate.' },
+    'ethylparaben': { status: 'Avoid', reason: 'Paraben preservative with demonstrated estrogenic activity and cellular accumulation.', substitute: 'Preservative-free sterile packaging.' },
     'parabens': { status: 'Avoid', reason: 'Class of chemical preservatives. Known endocrine disruptors that disrupt hormone balance and may accelerate skin aging under UV exposure.', substitute: 'Natural antimicrobial plant extracts.' },
+    'dmdm hydantoin': { status: 'Avoid', reason: 'Formaldehyde-releasing preservative. Slowly decomposes into carcinogenic formaldehyde on the skin, causing severe contact allergies and dermatitis.', substitute: 'Sodium benzoate or potassium sorbate in cosmetics.' },
+    'diazolidinyl urea': { status: 'Avoid', reason: 'High-risk formaldehyde donor preservative. Known trigger of chronic allergic contact dermatitis.', substitute: 'Glyceryl caprylate.' },
+    'imidazolidinyl urea': { status: 'Avoid', reason: 'Formaldehyde-releasing chemical preservative. Frequent cause of eczema and skin rashes.', substitute: 'Organic preservative systems.' },
+    'quaternium-15': { status: 'Avoid', reason: 'Severe formaldehyde releaser. One of the primary cosmetic contact allergens identified by dermatological patch tests.', substitute: 'Natural ferments.' },
+    'formaldehyde': { status: 'Avoid', reason: 'Known human carcinogen. Released by certain preservatives. High allergen, triggers skin burning, blistering, and cellular toxicity.', substitute: 'Preservative-free single-dose packaging.' },
     'sodium lauryl sulfate': { status: 'Concerning', reason: 'Harsh surfactant. Strips the skin barrier of natural lipids, causes severe epidermal water loss, and triggers irritation and eczema.', substitute: 'Decyl glucoside, coco-glucoside, or sodium cocoyl isethionate.' },
     'sls': { status: 'Concerning', reason: 'Abbreviation for Sodium Lauryl Sulfate. A primary skin irritant that compromises the skin barrier and triggers dermatitis.', substitute: 'Lauryl glucoside.' },
     'sodium laureth sulfate': { status: 'Concerning', reason: 'Foaming agent. Gentler than SLS but can be contaminated with 1,4-dioxane, a highly toxic carcinogen, during manufacturing.', substitute: 'Coco betaine.' },
     'sles': { status: 'Concerning', reason: 'Abbreviation for Sodium Laureth Sulfate. Carries risk of carcinogenic 1,4-dioxane contamination and causes mild skin irritation.', substitute: 'Sodium lauroyl methyl isethionate.' },
+    'oxybenzone': { status: 'Avoid', reason: 'Chemical sunscreen filter (Benzophenone-3). Proven severe endocrine disruptor that absorbs into the bloodstream, detected in breast milk and urine. Bleaches coral reefs.', substitute: 'Non-nano Zinc Oxide or Titanium Dioxide mineral blockers.' },
+    'octinoxate': { status: 'Avoid', reason: 'UV filter (Octyl methoxycinnamate). Mimics estrogen, disrupts thyroid hormone synthesis, and generates free radicals when exposed to sunlight.', substitute: 'Zinc oxide sunscreen.' },
+    'homosalate': { status: 'Concerning', reason: 'Chemical sunscreen filter shown to disrupt estrogen, androgen, and progesterone balance. Bioaccumulates in the body.', substitute: 'Mineral sunscreen.' },
+    'avobenzone': { status: 'Moderate', reason: 'Unstable UVA chemical filter that breaks down quickly under sunlight, generating reactive oxygen species and requiring synthetic stabilizers.', substitute: 'Mineral zinc oxide.' },
+    'octocrylene': { status: 'Moderate', reason: 'Synthetic UV absorber that degrades into benzophenone (a mutagenic carcinogen) over time in sunscreen bottles.', substitute: 'Non-nano zinc oxide.' },
+    'triethanolamine': { status: 'Concerning', reason: 'Emulsifier and pH adjuster (TEA). Can react with other ingredients to form carcinogenic nitrosamines; triggers severe skin contact allergies.', substitute: 'Arginine or sodium hydroxide.' },
+    'tea': { status: 'Concerning', reason: 'Triethanolamine. Strong skin irritant and precursor to carcinogenic nitrosamines.', substitute: 'Citric acid.' },
+    'diethanolamine': { status: 'Avoid', reason: 'Emulsifying amine (DEA). Carcinogenic risk factor associated with liver tumors and kidney toxicity.', substitute: 'Coco glucoside.' },
+    'dea': { status: 'Avoid', reason: 'Diethanolamine.', substitute: 'Natural surfactant.' },
+    'monoethanolamine': { status: 'Concerning', reason: 'Amine surfactant (MEA) known to induce occupational asthma and skin sensitization.', substitute: 'Gentle amino acid surfactants.' },
+    'alcohol denat': { status: 'Concerning', reason: 'Denatured alcohol. Severely strips natural epidermal lipids, dehydrates the skin barrier, and causes premature keratinocyte death.', substitute: 'Fatty alcohols (cetyl, stearyl) or alcohol-free formulas.' },
+    'denatured alcohol': { status: 'Concerning', reason: 'Astringent alcohol that dissolves the protective lipid barrier of the epidermis.', substitute: 'Centella or green tea hydrosol.' },
+    'isopropyl alcohol': { status: 'Concerning', reason: 'Rubbing alcohol. Extremely drying and sensitizing on facial skin; triggers rebound oil production.', substitute: 'Thermal spring water.' },
     'dimethicone': { status: 'Moderate', reason: 'Silicone polymer. Creates a breathable barrier on skin, which keeps moisture in but can trap oil, sweat, and dead skin in acne-prone types.', substitute: 'Plant-derived squalane or coco-caprylate.' },
     'cyclomethicone': { status: 'Moderate', reason: 'Volatile silicone. Evaporates quickly but has environmental bioaccumulation concerns and can dehydrate sensitive skin over time.', substitute: 'Hemisqualane.' },
+    'cyclopentasiloxane': { status: 'Concerning', reason: 'D5 silicone. Bioaccumulative in aquatic wildlife and flagged as an endocrine disruptor under EU chemical regulations.', substitute: 'Plant squalane.' },
+    'mineral oil': { status: 'Moderate', reason: 'Petroleum byproduct. Forms an occlusive layer. Prevents moisture loss but can trigger blackheads and clog pores in oily skin.', substitute: 'Jojoba oil, rosehip oil, or argan oil.' },
+    'petrolatum': { status: 'Moderate', reason: 'Petroleum jelly. Extremely occlusive. Great for healing severe dry patches but traps sebum and dirt if skin is not cleansed thoroughly.', substitute: 'Shea butter or beeswax.' },
     'fragrance': { status: 'Concerning', reason: 'Umbrella term for thousands of undisclosed chemicals. High risk of inducing contact allergies, eczema, dermatitis, and migraines.', substitute: 'Unscented formulas or products colored/scented with organic hydrosols.' },
     'parfum': { status: 'Concerning', reason: 'Synonym for Fragrance. Houses hidden phthalates (which keep scent longer) that disrupt thyroid and reproductive hormones.', substitute: 'Fragrance-free options.' },
     'phthalates': { status: 'Avoid', reason: 'Plasticizing chemical class. Act as severe reproductive toxins and endocrine disruptors, linked to asthma and allergy development.', substitute: 'Phthalate-free formulas.' },
-    'mineral oil': { status: 'Moderate', reason: 'Petroleum byproduct. Forms an occlusive layer. Prevents moisture loss but can trigger blackheads and clog pores in oily skin.', substitute: 'Jojoba oil, rosehip oil, or argan oil.' },
-    'petrolatum': { status: 'Moderate', reason: 'Petroleum jelly. Extremely occlusive. Great for healing severe dry patches but traps sebum and dirt if skin is not cleansed thoroughly.', substitute: 'Shea butter or beeswax.' },
-    'formaldehyde': { status: 'Avoid', reason: 'Known human carcinogen. Released by certain preservatives. High allergen, triggers skin burning, blistering, and cellular toxicity.', substitute: 'Preservative-free single-dose packaging.' },
-    
-    // Skincare Actives (Beneficial/Specialized)
+    'phenoxyethanol': { status: 'Moderate', reason: 'Common cosmetic preservative. Generally safe up to 1%, but can cause contact hives, eczema, and infant neurotoxicity if ingested.', substitute: 'Sodium levulinate or ethylhexylglycerin.' },
+    'disodium edta': { status: 'Moderate', reason: 'Chelating agent that binds heavy metals. Enhances the dermal penetration of other toxic chemicals through the skin barrier.', substitute: 'Sodium phytate.' },
+    'bht in cosmetics': { status: 'Harmful', reason: 'Butylated Hydroxytoluene. Used as cosmetic antioxidant; proven hormone disruptor.', substitute: 'Tocopherol (Vitamin E).' },
+    'triclosan': { status: 'Avoid', reason: 'Antimicrobial agent. Banned in consumer washes by FDA. Disrupts thyroid hormones, induces bacterial antibiotic resistance, and harms aquatic ecosystems.', substitute: 'Tea tree oil or colloidal silver.' },
+    'talc': { status: 'Concerning', reason: 'Mined mineral powder carrying high risk of natural asbestos contamination; linked to ovarian cancer and respiratory inflammation when inhaled.', substitute: 'Cornstarch or arrowroot powder.' },
+    'carbomer': { status: 'Moderate', reason: 'Synthetic polyacrylic acid polymer (microplastic). Safe on skin but non-biodegradable and causes environmental microplastic pollution.', substitute: 'Xanthan gum or sclerotium gum.' },
+    'peg-100 stearate': { status: 'Moderate', reason: 'Polyethylene glycol derivative. Penetration enhancer that carries risk of contamination with toxic 1,4-dioxane and ethylene oxide.', substitute: 'Cetearyl glucoside.' },
+    'stearic acid': { status: 'Safe', reason: 'Naturally occurring fatty acid found in plant fats. Nourishing emollient and stabilizer that softens the skin barrier.' },
+    'cetyl alcohol': { status: 'Safe', reason: 'Beneficial fatty alcohol derived from coconut oil. Non-drying, deeply conditioning, and stabilizes formulations.' },
+    'glycol stearate': { status: 'Safe', reason: 'Fatty acid ester used for pearlescent opacity and skin conditioning. Non-toxic.' },
+    'isopropyl palmitate': { status: 'Moderate', reason: 'Ester of isopropyl alcohol and palmitic acid. Highly comedogenic (pore-clogging rating 4/5) for acne-prone skin.', substitute: 'Squalane.' },
     'hyaluronic acid': { status: 'Safe', reason: 'Powerful humectant. Draws up to 1000x its weight in water into the skin, plumping fine lines and reinforcing the moisture barrier.' },
     'glycerin': { status: 'Safe', reason: 'Natural humectant and skin-identical ingredient. Extremely safe, highly effective at hydration, and repairs damaged skin barrier.' },
     'niacinamide': { status: 'Safe', reason: 'Vitamin B3. Regulates sebum production, strengthens the skin barrier, fades hyperpigmentation, and exerts anti-inflammatory action.' },
     'ceramides': { status: 'Safe', reason: 'Essential lipids that make up 50% of the skin barrier. Restores the moisture barrier, locks in hydration, and protects against irritants.' },
-    'salicylic acid': { status: 'Safe', reason: 'Beta Hydroxy Acid (BHA). Penetrates deep into pores to dissolve sebum, exfoliate dead skin, and clear acne. Anti-inflammatory.', note: 'Best for oily/acne-prone skin. Use sunscreen.' },
+    'salicylic acid': { status: 'Safe', reason: 'Beta Hydroxy Acid (BHA). Penetrates deep into pores to dissolve sebum, exfoliate dead skin, and clear acne. Anti-inflammatory.' },
     'centella asiatica': { status: 'Safe', reason: 'Korean Cica extract. Rich in amino acids and active compounds. Extremely soothing, heals wounds, and stimulates collagen synthesis.' },
     'aloe vera': { status: 'Safe', reason: 'Natural botanical extract. Contains vitamins, minerals, and polysaccharides. Intensely hydrates, cools, and soothes inflamed skin.' },
-    'retinol': { status: 'Moderate', reason: 'Vitamin A derivative. Highly effective at accelerating cell turnover and boosting collagen, but can cause redness, peeling, and sun sensitivity.', note: 'Highly active. Introduce slowly. Apply strictly at night and use SPF 30+ daily.' },
-    'glycolic acid': { status: 'Moderate', reason: 'Alpha Hydroxy Acid (AHA). Exfoliates the surface skin cells to brighten tone, but makes skin highly sensitive to UV rays.', note: 'May irritate sensitive skin. Must use sunscreen during the day.' }
+    'retinol': { status: 'Moderate', reason: 'Vitamin A derivative. Highly effective at accelerating cell turnover and boosting collagen, but can cause redness, peeling, and sun sensitivity.' },
+    'glycolic acid': { status: 'Moderate', reason: 'Alpha Hydroxy Acid (AHA). Exfoliates the surface skin cells to brighten tone, but makes skin highly sensitive to UV rays.' },
+    'squalane': { status: 'Safe', reason: 'Bio-compatible plant oil derived from olives or sugarcane. Mimics skin sebum, non-comedogenic, and deeply replenishes the moisture barrier.' },
+    'panthenol': { status: 'Safe', reason: 'Pro-vitamin B5. Powerful soothing humectant that relieves redness, accelerates wound healing, and restores damaged barrier integrity.' },
+    'tocopherol': { status: 'Safe', reason: 'Pure Vitamin E. Potent lipid-soluble antioxidant that neutralizes free radicals and protects skin against UV photodamage.' },
+    'allantoin': { status: 'Safe', reason: 'Non-toxic botanical soothing agent that calms irritation, stimulates cellular regeneration, and protects sensitive skin.' },
+    'zinc oxide': { status: 'Safe', reason: 'Clean mineral physical sunscreen filter. Broad-spectrum UVA/UVB protection, anti-inflammatory, and reef-safe.' },
+
+    'extra virgin olive oil': { status: 'Safe', reason: 'Unrefined cold-pressed fruit oil loaded with oleic acid and polyphenols. Strongly cardioprotective and anti-inflammatory.' },
+    'olive oil': { status: 'Safe', reason: 'Heart-healthy monounsaturated fat that supports HDL cholesterol.' },
+    'avocado oil': { status: 'Safe', reason: 'High-heat stable monounsaturated fat rich in lutein and vitamin E.' },
+    'coconut oil': { status: 'Safe', reason: 'Plant-derived source of medium-chain triglycerides (MCTs) like lauric acid.' },
+    'sesame oil': { status: 'Safe', reason: 'Cold-pressed traditional oil rich in sesamol and sesamolin antioxidants.' },
+    'mustard oil': { status: 'Safe', reason: 'Traditional pungently flavored cold-pressed oil with balanced omega fatty acids.' },
+    'ghee': { status: 'Safe', reason: 'Clarified cultured butter rich in butyric acid, fat-soluble vitamins A, D, E, K, and free of lactose/casein solids.' },
+    'butter': { status: 'Safe', reason: 'Natural dairy fat providing conjugated linoleic acid (CLA) and butyrate.' },
+    'ascorbic acid': { status: 'Safe', reason: 'Pure Vitamin C. Powerful essential water-soluble antioxidant and immunity cofactor.' },
+    'ins 300': { status: 'Safe', reason: 'INS Code for Ascorbic Acid (Vitamin C). Healthy antioxidant.' },
+    'e300': { status: 'Safe', reason: 'European code for Vitamin C (Ascorbic Acid).' },
+    'vitamin c': { status: 'Safe', reason: 'Essential micronutrient that neutralizes free radicals and supports collagen synthesis.' },
+    'lemon juice': { status: 'Safe', reason: 'Fresh citrus juice high in natural citric acid, vitamin C, and flavonoids.' },
+    'lime juice': { status: 'Safe', reason: 'Natural citrus antioxidant source.' },
+    'black pepper': { status: 'Safe', reason: 'Aromatic spice rich in piperine, which boosts nutrient and curcumin bioavailability by up to 2000%.' },
+    'rice': { status: 'Safe', reason: 'Digestible complex carbohydrate grain.' },
+    'brown rice': { status: 'Safe', reason: 'Whole grain retaining bran and germ, rich in manganese, magnesium, and dietary fiber.' },
+    'lentils': { status: 'Safe', reason: 'Plant protein and soluble fiber powerhouse supporting gut health and glycemic control.' },
+    'dal': { status: 'Safe', reason: 'Traditional legume source rich in folate, iron, and plant protein.' },
+    'chickpeas': { status: 'Safe', reason: 'Garbanzo beans packed with prebiotic fiber and sustained plant-based energy.' },
+    'beans': { status: 'Safe', reason: 'High-fiber legume supporting metabolic and colon health.' },
+    'tofu': { status: 'Safe', reason: 'Minimally processed soybean curd rich in complete protein, calcium, and isoflavones.' },
+    'paneer': { status: 'Safe', reason: 'Fresh non-melting cottage cheese high in bioavailable milk protein and calcium.' },
+    'eggs': { status: 'Safe', reason: 'Gold standard biological value protein packed with choline, lutein, and essential fatty acids.' },
+    'fish': { status: 'Safe', reason: 'Excellent lean protein source rich in anti-inflammatory omega-3 EPA and DHA.' },
+    'salmon': { status: 'Safe', reason: 'Fatty fish delivering premier omega-3 fatty acids and astaxanthin.' },
+    'chicken': { status: 'Safe', reason: 'Lean poultry protein supporting muscle repair and metabolic satiety.' },
+    'broccoli': { status: 'Safe', reason: 'Cruciferous vegetable rich in sulforaphane, indole-3-carbinol, and vitamins C and K.' },
+    'carrots': { status: 'Safe', reason: 'Beta-carotene rich root vegetable supporting ocular vision and immune defenses.' },
+    'garlic': { status: 'Safe', reason: 'Allium rich in allicin, supporting cardiovascular elasticity and antimicrobial resistance.' },
+    'honey': { status: 'Safe', reason: 'Raw unheated bee nectar containing enzymes, pollen, and natural antibacterial compounds (use mindfully for diabetes).' },
+    'raw honey': { status: 'Safe', reason: 'Unfiltered enzymatic natural sweetener.' },
+    'dates': { status: 'Safe', reason: 'Whole fruit natural sweetener containing dietary fiber, potassium, and antioxidants.' },
+    'maple syrup': { status: 'Safe', reason: '100% pure tree sap containing 24+ antioxidants and minerals like zinc and manganese.' },
+    'stevia': { status: 'Safe', reason: 'Zero-calorie natural leaf extract with no glycemic impact.' },
+    'monk fruit': { status: 'Safe', reason: 'Natural fruit mogroside extract with zero glycemic index.' }
 };
+
 
 // Common Medication Interactions for local engine
 const MED_INTERACTIONS = [
     { drug1: 'aspirin', drug2: 'warfarin', severity: 'Major', effect: 'Concomitant use significantly increases the risk of serious gastrointestinal and systemic bleeding due to dual antiplatelet and anticoagulant action.', recommendation: 'Avoid combination. If necessary, monitor coagulation metrics (INR) extremely closely. Discuss safer alternatives with your physician.' },
     { drug1: 'ibuprofen', drug2: 'aspirin', severity: 'Moderate', effect: 'Ibuprofen may inhibit the cardioprotective antiplatelet effect of low-dose aspirin and increases the risk of stomach ulcers.', recommendation: 'Take aspirin at least 30 minutes before or 8 hours after ibuprofen. Monitor for abdominal pain.' },
     { drug1: 'ibuprofen', drug2: 'lisinopril', severity: 'Moderate', effect: 'NSAIDs like ibuprofen can impair kidney function and decrease the blood pressure lowering efficacy of Lisinopril.', recommendation: 'Monitor blood pressure and kidney biomarkers regularly. Consider acetaminophen as a pain substitute.' },
-    { drug1: 'metformin', drug2: 'aspirin', severity: 'None', effect: 'No significant pharmacokinetic interactions detected.', recommendation: 'Generally safe to take together.' }
+    { drug1: 'metformin', drug2: 'aspirin', severity: 'None', effect: 'No significant pharmacokinetic interactions detected.', recommendation: 'Generally safe to take together.' },
+    { drug1: 'omeprazole', drug2: 'clopidogrel', severity: 'Major', effect: 'Omeprazole strongly inhibits CYP2C19, preventing metabolic activation of Clopidogrel. Significantly increases risk of recurrent myocardial infarction and ischemic stroke.', recommendation: 'Avoid combination. Consider switching to Pantoprazole or a histamine-2 receptor antagonist (Famotidine) which does not inhibit CYP2C19.' },
+    { drug1: 'pantoprazole', drug2: 'clopidogrel', severity: 'Minor', effect: 'Pantoprazole exhibits weak CYP2C19 inhibition compared to Omeprazole, but monitor antiplatelet response.', recommendation: 'Safer proton pump inhibitor option when on Clopidogrel therapy.' },
+    { drug1: 'sildenafil', drug2: 'nitroglycerin', severity: 'Contraindicated', effect: 'Co-administration produces massive, life-threatening systemic vasodilation and catastrophic hypotension.', recommendation: 'STRICTLY CONTRAINDICATED. Never take PDE5 inhibitors within 24-48 hours of nitrate medications.' },
+    { drug1: 'tadalafil', drug2: 'nitroglycerin', severity: 'Contraindicated', effect: 'Severe, potentially fatal refractory hypotension due to synergistic nitric oxide cGMP pathway amplification.', recommendation: 'STRICTLY CONTRAINDICATED. Allow at least 48 hours between Tadalafil and nitrates.' },
+    { drug1: 'simvastatin', drug2: 'clarithromycin', severity: 'Major', effect: 'Clarithromycin potently inhibits CYP3A4, dramatically elevating statin blood plasma concentration. High risk of severe rhabdomyolysis and fatal acute kidney failure.', recommendation: 'Temporarily discontinue statin while taking macrolide antibiotics, or use Azithromycin.' },
+    { drug1: 'atorvastatin', drug2: 'clarithromycin', severity: 'Major', effect: 'CYP3A4 inhibition increases Atorvastatin exposure 4-fold. Severe risk of myopathy, muscle breakdown, and hepatic strain.', recommendation: 'Limit Atorvastatin dose to 20mg daily or suspend during antibiotic course.' },
+    { drug1: 'tramadol', drug2: 'fluoxetine', severity: 'Major', effect: 'Combined serotonergic activity dramatically increases risk of life-threatening Serotonin Syndrome and lowers the seizure threshold.', recommendation: 'Avoid concomitant use. Monitor for tremors, hyperreflexia, agitation, and hyperthermia.' },
+    { drug1: 'tramadol', drug2: 'sertraline', severity: 'Major', effect: 'Dual serotonin reuptake inhibition increases central serotonin toxicity and seizure potential.', recommendation: 'Use non-serotonergic analgesics (e.g. Paracetamol) for acute pain.' },
+    { drug1: 'paracetamol', drug2: 'alcohol', severity: 'Major', effect: 'Chronic alcohol consumption induces CYP2E1 enzymes, converting Paracetamol into toxic NAPQI and causing acute liver necrosis.', recommendation: 'Strictly avoid combining alcohol with Paracetamol. Do not exceed 2g daily if drinking.' },
+    { drug1: 'acetaminophen', drug2: 'alcohol', severity: 'Major', effect: 'Synergistic hepatotoxicity. High risk of fulminant acute liver failure.', recommendation: 'Avoid alcohol while taking acetaminophen.' },
+    { drug1: 'warfarin', drug2: 'ibuprofen', severity: 'Major', effect: 'NSAIDs displace warfarin from albumin, inhibit platelet aggregation, and induce gastric erosions, triggering life-threatening gastrointestinal hemorrhage.', recommendation: 'Avoid NSAIDs completely while on Warfarin. Use Paracetamol for analgesia.' },
+    { drug1: 'lisinopril', drug2: 'spironolactone', severity: 'Major', effect: 'Dual potassium-sparing action produces severe hyperkalemia, which can cause fatal cardiac conduction blocks and arrhythmias.', recommendation: 'Strictly monitor serum potassium and renal function within 1-2 weeks of initiation.' },
+    { drug1: 'ciprofloxacin', drug2: 'calcium', severity: 'Moderate', effect: 'Cation chelation in the digestive tract prevents up to 90% of fluoroquinolone antibiotic absorption.', recommendation: 'Take Ciprofloxacin at least 2 hours before or 6 hours after dairy or calcium supplements.' },
+    { drug1: 'methotrexate', drug2: 'ibuprofen', severity: 'Major', effect: 'NSAIDs reduce renal methotrexate clearance, precipitating bone marrow suppression, leukopenia, and fatal toxicity.', recommendation: 'Avoid NSAIDs during Methotrexate therapy without strict rheumatology supervision.' },
+    { drug1: 'lithium', drug2: 'ibuprofen', severity: 'Major', effect: 'NSAIDs decrease renal prostaglandin synthesis, reducing lithium excretion and causing toxic serum accumulation (tremors, ataxia, renal failure).', recommendation: 'Avoid NSAIDs; monitor lithium serum levels closely if co-prescribed.' },
+    { drug1: 'digoxin', drug2: 'amiodarone', severity: 'Major', effect: 'Amiodarone inhibits P-glycoprotein, doubling serum Digoxin concentrations and inducing fatal cardiac arrhythmias.', recommendation: 'Reduce Digoxin dosage by 50% when initiating Amiodarone and check serum levels.' },
+    { drug1: 'metformin', drug2: 'contrast', severity: 'Major', effect: 'Iodinated radiocontrast agents can cause acute renal failure, precipitating fatal Metformin-associated lactic acidosis (MALA).', recommendation: 'Withhold Metformin at time of radiocontrast procedure and resume 48 hours later after verifying kidney function.' },
+    { drug1: 'levothyroxine', drug2: 'calcium', severity: 'Moderate', effect: 'Calcium carbonate binds thyroxine in the gastrointestinal tract, causing clinical hypothyroidism.', recommendation: 'Separate administration of Levothyroxine and calcium supplements by at least 4 hours.' }
 ];
 
 // --- Vector Icons ---
@@ -189,56 +482,85 @@ const performOCR = async (imageSrc, onProgress) => {
 
 // --- Direct CORS-Enabled Groq API Client Fetch ---
 const callGroq = async (apiKey, prompt) => {
-    const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: "llama3-70b-8192",
-            messages: [{ role: "user", content: prompt }],
-            response_format: { type: "json_object" }
-        })
-    });
+    const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+    let lastError = null;
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error((errorData.error && errorData.error.message) || 'Groq AI connection failed.');
+    for (const model of models) {
+        try {
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': "Bearer " + apiKey
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: "user", content: prompt }],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error((errorData.error && errorData.error.message) || ("Groq API error (" + response.status + ")"));
+            }
+
+            const data = await response.json();
+            const text = data.choices[0].message.content;
+            return JSON.parse(text);
+        } catch (err) {
+            lastError = err;
+            console.warn("Groq model " + model + " attempt failed:", err.message);
+        }
     }
-
-    const data = await response.json();
-    const text = data.choices[0].message.content;
-    return JSON.parse(text);
+    throw lastError || new Error('Groq AI connection failed.');
 };
 
 // --- Smart Local Offline Analysis Engine ---
 const runOfflineAnalysis = (input, tab, profile) => {
-    const cleanText = input.toLowerCase();
-    
     // 1. Core Profile Context
-    const profileAllergies = profile.allergies.map(a => a.toLowerCase());
-    const profileConditions = profile.conditions.map(c => c.toLowerCase());
+    const profileAllergies = (profile.allergies || []).map(a => a.toLowerCase());
+    const profileConditions = (profile.conditions || []).map(c => c.toLowerCase());
     
-    // 2. Tokenize Ingredient string
+    // Sort dictionary keys by length descending for accurate longest-phrase matching
+    const sortedKeys = Object.keys(OFFLINE_INGREDIENTS).sort((a, b) => b.length - a.length);
+
+    // 2. Clean input and tokenize
+    let cleanText = input.toLowerCase()
+        .replace(/^(ingredients|composition|nutrition\s+facts|contains|ingredients\s*\/|\s*:)+/i, '')
+        .replace(/\([ivx\s]+\)/gi, '') // normalize roman numerals e.g. (ii) in INS 503(ii)
+        .replace(/\[/g, '(')
+        .replace(/\]/g, ')')
+        .replace(/[•|\/]/g, ',');
+
     const tokens = cleanText.split(/[,;\n\(\)\{\}]/)
-        .map(t => t.trim().replace(/^and\s+/, '').replace(/\.$/, ''))
-        .filter(t => t.length > 2);
+        .map(t => t.trim()
+            .replace(/^and\s+/i, '')
+            .replace(/^with\s+/i, '')
+            .replace(/^contains\s+/i, '')
+            .replace(/^edible\s+/i, '')
+            .replace(/\s*\d+(\.\d+)?%\s*/g, '')
+            .replace(/\.$/, '')
+            .trim()
+        )
+        .filter(t => t.length > 1 && !/^\d+$/.test(t) && !/^(i|ii|iii|iv|v|vi)$/i.test(t));
 
     if (tab === TABS.MEDS) {
         // --- Medications offline engine ---
-        const activeMeds = tokens.map(t => t.split(/\s+/)[0]); // Match exact drug names
+        const activeMeds = tokens.map(t => t.split(/[\s\/\-]+/)[0].toLowerCase());
         const interactions = [];
         let highRiskCount = 0;
         
-        // Find pairs matching local interactive database
         for (let i = 0; i < activeMeds.length; i++) {
             for (let j = i + 1; j < activeMeds.length; j++) {
                 const m1 = activeMeds[i];
                 const m2 = activeMeds[j];
                 const match = MED_INTERACTIONS.find(item => 
-                    (item.drug1 === m1 && item.drug2 === m2) || 
-                    (item.drug1 === m2 && item.drug2 === m1)
+                    (item.drug1.includes(m1) || m1.includes(item.drug1)) && 
+                    (item.drug2.includes(m2) || m2.includes(item.drug2))
+                ) || MED_INTERACTIONS.find(item => 
+                    (item.drug1.includes(m2) || m2.includes(item.drug1)) && 
+                    (item.drug2.includes(m1) || m1.includes(item.drug2))
                 );
                 if (match) {
                     interactions.push(match);
@@ -251,25 +573,23 @@ const runOfflineAnalysis = (input, tab, profile) => {
             }
         }
         
-        // Custom warning for medical profile conditions
         let overallRisk = 'Safe';
-        let advice = 'No hazardous drug-to-drug interactions were detected in our offline core dictionary.';
+        let advice = 'No hazardous drug-to-drug interactions were detected in our offline core clinical dictionary.';
         
         if (highRiskCount >= 2) {
             overallRisk = 'Dangerous';
-            advice = 'CRITICAL: Dangerous drug combinations detected. Co-administration poses immediate toxicity risks. Consult a cardiologist or medical specialist immediately.';
+            advice = 'CRITICAL: Dangerous medication interactions detected. Co-administration poses severe toxicity or adverse clinical risks. Consult your prescribing physician immediately.';
         } else if (highRiskCount === 1) {
             overallRisk = 'Caution';
-            advice = 'WARNING: Moderate medication interactions found. May result in gastric distress, altered efficacy, or blood pressure fluctuations.';
+            advice = 'WARNING: Moderate medication interactions found. May result in reduced therapeutic efficacy, altered blood pressure, or organ stress.';
         }
 
-        // Add disease condition specific checks
         if (profileConditions.includes('diabetes') && cleanText.includes('steroid')) {
             interactions.push({
                 drug1: 'Steroids',
                 drug2: 'Metformin/Insulin',
                 severity: 'Major',
-                effect: 'Corticosteroids/Steroids significantly elevate blood glucose levels and render anti-diabetic medications substantially less effective.',
+                effect: 'Corticosteroids significantly elevate blood glucose levels and counteract anti-diabetic medications.',
                 recommendation: 'Strict glycemic tracking required. Contact your endocrinologist to adjust diabetic doses.'
             });
             overallRisk = 'Dangerous';
@@ -291,82 +611,97 @@ const runOfflineAnalysis = (input, tab, profile) => {
         const topConcerns = [];
         const positives = [];
         let skinTypeWarning = '';
+        let unknownCount = 0;
 
         tokens.forEach(tok => {
             let matched = false;
             const normTok = tok.toLowerCase().trim();
-            if (normTok.length < 3 || /^\d+$/.test(normTok) || /^[^a-z]+$/i.test(normTok)) return;
+            if (normTok.length < 2 || /^\d+$/.test(normTok) || /^[^a-z0-9]+$/i.test(normTok)) return;
 
-            // Scan offline cosmetic DB
-            for (const [key, details] of Object.entries(OFFLINE_INGREDIENTS)) {
+            // 1. Scan expanded cosmetic DB with sorted keys
+            for (const key of sortedKeys) {
                 if (normTok.includes(key)) {
                     matched = true;
+                    const details = OFFLINE_INGREDIENTS[key];
                     let status = details.status;
-                    let deduction = status === 'Avoid' ? 20 : status === 'Concerning' ? 10 : status === 'Moderate' ? 5 : 0;
+                    let deduction = status === 'Avoid' ? 25 : status === 'Concerning' ? 15 : status === 'Harmful' ? 20 : status === 'Moderate' ? 8 : 0;
 
-                    // Skin type specific warnings
-                    if (profile.skinType === 'Oily' && key === 'mineral oil') {
-                        deduction += 5; status = 'Avoid';
-                        skinTypeWarning = 'Contains highly comedogenic mineral oils which can trap sebum on Oily skin, triggering breakouts.';
-                    } else if (profile.skinType === 'Dry' && (key === 'sls' || key === 'sodium lauryl sulfate')) {
+                    // Skin type specific modifiers
+                    if (profile.skinType === 'Oily' && (key.includes('mineral oil') || key.includes('petrolatum') || key.includes('palmitate') || key.includes('dimethicone'))) {
+                        deduction += 10; status = 'Avoid';
+                        skinTypeWarning = 'Contains heavy comedogenic lipids or silicones which can trap sebum on Oily skin, triggering acne cosmetica.';
+                    } else if (profile.skinType === 'Dry' && (key.includes('sls') || key.includes('sulfate') || key.includes('alcohol denat') || key.includes('isopropyl alcohol'))) {
+                        deduction += 15; status = 'Avoid';
+                        skinTypeWarning = 'Harsh surfactants or drying alcohols detected. Extremely damaging for your Dry skin profile, stripping the natural lipid barrier.';
+                    } else if (profile.skinType === 'Sensitive' && (key.includes('fragrance') || key.includes('parfum') || key.includes('acid') || key.includes('paraben'))) {
                         deduction += 10;
-                        skinTypeWarning = 'Harsh sulfates detected. Extremely drying for your Dry skin profile, potentially stripping natural lipid barrier.';
+                        skinTypeWarning = 'Sensitizing fragrances, harsh acids, or synthetic preservatives detected. High risk of redness and erythema on Sensitive skin.';
                     }
 
                     totalScore -= deduction;
                     
                     ingredients.push({
                         name: tok.charAt(0).toUpperCase() + tok.slice(1),
-                        function: key.includes('paraben') || key.includes('sorbate') ? 'Preservative' : key.includes('sulfate') || key === 'sls' ? 'Surfactant/Cleanser' : 'Active Skin Ingredient',
+                        function: key.includes('paraben') || key.includes('sorbate') || key.includes('hydantoin') ? 'Preservative' : key.includes('sulfate') || key.includes('sls') ? 'Surfactant / Cleanser' : key.includes('acid') ? 'Active Exfoliant / Acid' : key.includes('oil') || key.includes('butter') ? 'Emollient / Lipid' : 'Cosmetic Active',
                         status,
                         reason: details.reason,
-                        comedogenic: key === 'mineral oil' || key === 'petrolatum' || key === 'dimethicone',
-                        endocrineDisruptor: key.includes('paraben') || key === 'phthalates',
+                        comedogenic: key.includes('mineral oil') || key.includes('petrolatum') || key.includes('palmitate') || key.includes('dimethicone'),
+                        endocrineDisruptor: key.includes('paraben') || key.includes('phthalate') || key.includes('oxybenzone') || key.includes('octinoxate'),
                         healthySubstitute: details.substitute
                     });
 
-                    if (status === 'Avoid' || status === 'Concerning') topConcerns.push(`${tok.toUpperCase()}: ${details.reason.slice(0, 50)}...`);
+                    if (status === 'Avoid' || status === 'Concerning' || status === 'Harmful') topConcerns.push(tok.toUpperCase() + ": " + details.reason.slice(0, 60) + "...");
                     else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
                     break;
                 }
             }
 
-            // Smart Heuristic Regex Engine (Fallback for Unknowns)
+            // 2. Smart Heuristic Regex Engine for Skincare
             if (!matched) {
-                let status = 'Safe';
-                let reason = 'General cosmetic formulation ingredient. No major hazardous matches found in heuristics.';
+                let status = 'Unknown';
+                let reason = 'Ingredient not recognized in local INCI database. May require Deep AI Scan.';
                 let deduction = 0;
-                let func = 'Cosmetic Base';
+                let func = 'Formulation Base';
                 let comedogenic = false;
                 let edc = false;
 
-                if (/paraben|phthalate|triclosan|pf[ao]s/i.test(normTok)) {
-                    status = 'Avoid'; reason = 'Heuristically identified as a toxic preservative or endocrine disrupting chemical (EDC). Avoid prolonged dermal absorption.';
-                    deduction = 20; func = 'Toxic Preservative'; edc = true;
-                } else if (/sulfate|sls|sles|peg-|steareth/i.test(normTok)) {
-                    status = 'Concerning'; reason = 'Heuristically identified as a harsh stripping surfactant or ethoxylated chemical. May cause barrier damage.';
-                    deduction = 10; func = 'Harsh Surfactant';
-                } else if (/oil|butter|wax|dimethicone|siloxane/i.test(normTok)) {
+                if (/paraben|phthalate|triclosan|pf[ao]s|formaldehyd|hydantoin|urea\b/i.test(normTok)) {
+                    status = 'Avoid'; reason = 'Heuristically identified as a toxic preservative, formaldehyde donor, or endocrine disruptor. Avoid prolonged dermal absorption.';
+                    deduction = 25; func = 'Toxic Preservative / EDC'; edc = true;
+                } else if (/sulfate|sls|sles|peg-|steareth|ceteareth|polysorbate/i.test(normTok)) {
+                    status = 'Concerning'; reason = 'Heuristically identified as an ethoxylated surfactant or harsh cleanser. Risk of 1,4-dioxane traces and epidermal barrier stripping.';
+                    deduction = 15; func = 'Surfactant / Emulsifier';
+                } else if (/oxybenzone|octinoxate|homosalate|avobenzone|octocrylene/i.test(normTok)) {
+                    status = 'Avoid'; reason = 'Chemical UV filter flagged for systemic endocrine disruption and photo-degradation.';
+                    deduction = 20; func = 'Chemical UV Filter'; edc = true;
+                } else if (/oil|butter|wax|dimethicone|siloxane|petrolat/i.test(normTok)) {
                     func = 'Emollient / Occlusive';
                     if (profile.skinType === 'Oily') {
-                        status = 'Concerning'; reason = 'Heuristically identified as a heavy occlusive lipid. High risk of pore-clogging for Oily skin.';
-                        deduction = 5; comedogenic = true; skinTypeWarning = 'Heavy oils/silicones detected. May cause acne cosmetica on Oily skin.';
+                        status = 'Concerning'; reason = 'Heuristically identified as a heavy lipid or silicone. High risk of clogging pores on Oily skin.';
+                        deduction = 10; comedogenic = true; skinTypeWarning = 'Heavy oils/silicones detected. May cause acne cosmetica on Oily skin.';
                     } else {
                         status = 'Safe'; reason = 'Moisturizing lipid barrier component.';
                     }
-                } else if (/acid/i.test(normTok)) {
-                    func = 'Active Acid';
+                } else if (/acid\b/i.test(normTok)) {
+                    func = 'Active Chemical Acid';
                     if (profile.skinType === 'Sensitive') {
-                        status = 'Moderate'; reason = 'Chemical acid detected. May cause burning or erythema on Sensitive skin profiles.';
-                        deduction = 5; skinTypeWarning = 'Active acids detected. Use with caution on your Sensitive skin barrier.';
+                        status = 'Moderate'; reason = 'Chemical acid detected. May provoke barrier stinging or erythema on Sensitive skin profiles.';
+                        deduction = 8; skinTypeWarning = 'Active chemical acids detected. Use with caution on Sensitive skin.';
+                    } else {
+                        status = 'Moderate'; reason = 'Active chemical exfoliant. Requires sun protection during daytime.';
+                        deduction = 4;
                     }
-                } else if (/fragrance|parfum/i.test(normTok)) {
-                    status = 'Moderate'; reason = 'Synthetic fragrance. High potential for contact dermatitis.';
-                    deduction = 5; func = 'Sensitizing Agent';
-                } else if (/extract|water|aqua|glycerin/i.test(normTok)) {
-                    status = 'Safe'; reason = 'Benign hydration or natural botanical extract base.';
+                } else if (/fragrance|parfum|perfume|aroma/i.test(normTok)) {
+                    status = 'Concerning'; reason = 'Synthetic fragrance mixture. High potential for contact allergies and hidden phthalates.';
+                    deduction = 15; func = 'Sensitizing Fragrance';
+                } else if (/alcohol\b|ethanol\b|isoprop/i.test(normTok) && !/cetyl|stearyl|cetearyl/i.test(normTok)) {
+                    status = 'Concerning'; reason = 'Astringent drying alcohol. Strips epidermal lipids and disrupts barrier function.';
+                    deduction = 15; func = 'Drying Alcohol';
+                } else if (/extract|water|aqua|glycerin|juice|distillate|hydrosol|cica|ceramide|squalane|panthenol|allantoin/i.test(normTok)) {
+                    status = 'Safe'; reason = 'Clean botanical hydration or skin-identical restorative active.';
                 } else {
-                    status = 'Unknown'; reason = 'Ingredient not recognized. May require Deep AI Scan.';
+                    unknownCount++;
+                    deduction = 3;
                 }
 
                 ingredients.push({
@@ -379,10 +714,14 @@ const runOfflineAnalysis = (input, tab, profile) => {
                 });
                 totalScore -= deduction;
 
-                if (status === 'Avoid' || status === 'Concerning') topConcerns.push(`${tok.toUpperCase()}: ${reason.slice(0, 50)}...`);
+                if (status === 'Avoid' || status === 'Concerning' || status === 'Harmful') topConcerns.push(tok.toUpperCase() + ": " + reason.slice(0, 60) + "...");
                 else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
             }
         });
+
+        if (unknownCount >= 3 && totalScore > 75) {
+            totalScore = 75;
+        }
 
         const score = Math.max(10, Math.min(100, totalScore));
         let overallRating = 'Safe';
@@ -396,56 +735,73 @@ const runOfflineAnalysis = (input, tab, profile) => {
             ingredients,
             topConcerns: topConcerns.slice(0, 3),
             positives: positives.slice(0, 3),
-            skinTypeWarning: skinTypeWarning || 'Ingredients align appropriately with your ' + profile.skinType + ' skin type.',
-            summary: `Skin Safety score evaluated at ${score}/100. Local analysis completed using Offline INCI databases.`
+            skinTypeWarning: skinTypeWarning || ('Ingredients align appropriately with your ' + (profile.skinType || 'skin') + ' type.'),
+            summary: "Skin Safety score evaluated at " + score + "/100. Local analysis completed using expanded INCI databases."
         };
     }
 
     if (tab === TABS.MENU) {
         // --- Restaurant Menu offline decoder ---
         const dishes = tokens.map(dish => {
-            let calories = 250;
-            let macros = { protein: '8g', carbs: '32g', fat: '10g' };
-            let score = 85;
+            let calories = 350;
+            let macros = { protein: '15g', carbs: '35g', fat: '14g' };
+            let score = 70;
             let suitable = true;
-            let reason = 'High quality nutritious dish suitable for general clean eating.';
+            let reason = 'Standard restaurant preparation. Enjoy in moderation with mindful portions.';
             let substitute = '';
             let allergens = [];
 
             const name = dish.toLowerCase();
 
             // Allergen alerts
-            if (profileAllergies.includes('nuts') && (name.includes('nut') || name.includes('peanut') || name.includes('cashew') || name.includes('almond') || name.includes('pesto'))) {
-                score -= 40;
-                suitable = false;
-                allergens.push('Nuts');
-                reason = 'CRITICAL: Contains nuts. Extreme danger under active Nuts allergy setting.';
-                substitute = 'Request a nut-free seed alternative (e.g. sunflower seed paste).';
+            if (profileAllergies.includes('nuts') && (name.includes('nut') || name.includes('peanut') || name.includes('cashew') || name.includes('almond') || name.includes('pesto') || name.includes('walnut'))) {
+                score -= 50; suitable = false; allergens.push('Nuts');
+                reason = 'CRITICAL ALLERGY ALERT: Contains nuts. Severe anaphylaxis risk under active Nuts allergy setting.';
+                substitute = 'Request a completely nut-free seed alternative.';
+            }
+            if (profileAllergies.includes('dairy') && (name.includes('cheese') || name.includes('paneer') || name.includes('butter') || name.includes('cream') || name.includes('alfredo') || name.includes('fondue') || name.includes('milkshake'))) {
+                score -= 50; suitable = false; allergens.push('Dairy');
+                reason = 'CRITICAL ALLERGY ALERT: Dairy components detected under active Dairy allergy setting.';
+                substitute = 'Request dairy-free / vegan preparation without butter or cheese.';
             }
 
-            // Custom medical rules
-            if (name.includes('paneer') || name.includes('chicken') || name.includes('fish') || name.includes('tofu')) {
-                calories = 380;
-                macros = { protein: '24g', carbs: '10g', fat: '16g' };
-                score = 90;
-                if (profileConditions.includes('Diabetes')) {
-                    reason = 'Excellent high-protein dish with minimal carbohydrate impact, ideal for blood glucose regulation.';
+            // Food category grading
+            if (/fries|fried|crispy|tempura|nuggets|wings|fritters|pakora|samosa|puri|bhatura|chole bhature|chips|spring roll/i.test(name)) {
+                calories = 580; macros = { protein: '8g', carbs: '65g', fat: '32g' };
+                score = 30; suitable = false;
+                reason = 'Deep fried item loaded with high oxidized saturated/trans fats and inflammatory thermal lipids.';
+                substitute = 'Choose roasted, air-fried, or grilled alternatives with salsa or hummus.';
+            } else if (/cake|brownie|lava|sundae|ice cream|gelato|donut|doughnut|churros|cheesecake|muffin|gulab jamun|jalebi|halwa|pastry|waffle|pancake|pudding/i.test(name)) {
+                calories = 520; macros = { protein: '5g', carbs: '78g', fat: '24g' };
+                score = 25; suitable = false;
+                reason = 'High sugar density confectionery. Provokes steep insulin spikes, visceral adiposity, and metabolic stress.';
+                substitute = 'Fresh seasonal fruit bowl, berries, or sugar-free Greek yogurt.';
+            } else if (/bacon|sausage|pepperoni|salami|hot dog|chorizo|ham/i.test(name)) {
+                calories = 460; macros = { protein: '18g', carbs: '4g', fat: '42g' };
+                score = 35; suitable = false;
+                reason = 'Processed cured meat containing nitrates, high sodium, and pro-inflammatory saturated fats.';
+                substitute = 'Fresh grilled chicken breast, roasted turkey, or wild-caught fish.';
+            } else if (/cocktail|beer|wine|whiskey|vodka|soda|cola|shake|frappe|sweet tea/i.test(name)) {
+                calories = 300; macros = { protein: '1g', carbs: '48g', fat: '6g' };
+                score = 25; suitable = false;
+                reason = 'Concentrated liquid sugar and/or alcohol. High empty calories that elevate hepatic triglycerides.';
+                substitute = 'Sparkling mineral water with fresh lime or unsweetened green tea.';
+            } else if (/pasta|pizza|burger|naan|roti|noodles|lasagna|quesadilla|tacos|mac and cheese/i.test(name)) {
+                calories = 620; macros = { protein: '18g', carbs: '80g', fat: '26g' };
+                score = 45;
+                if (profileConditions.includes('diabetes')) {
+                    suitable = false; score = 25;
+                    reason = 'Extremely high refined carbohydrate load. Triggers dangerous postprandial glycemic excursions.';
+                    substitute = 'Zucchini noodles, lettuce-wrapped burger, or cauliflower crust.';
+                } else {
+                    reason = 'High refined starch and caloric density. Limit portion size and balance with fiber.';
+                    substitute = 'Whole wheat or high-protein alternative.';
                 }
-            } else if (name.includes('pasta') || name.includes('pizza') || name.includes('burger') || name.includes('naan') || name.includes('roti') || name.includes('noodles')) {
-                calories = 550;
-                macros = { protein: '12g', carbs: '75g', fat: '22g' };
-                score = 50;
-                if (profileConditions.includes('Diabetes')) {
-                    suitable = false;
-                    score = 30;
-                    reason = 'Very high carbohydrate refined wheat content. Can trigger high insulin demands and rapid glycemic spikes.';
-                    substitute = 'Whole wheat thin crust, lettuce wraps, or high-protein skewers.';
-                }
-            } else if (name.includes('salad') || name.includes('soup') || name.includes('sprouts')) {
-                calories = 180;
-                macros = { protein: '6g', carbs: '15g', fat: '4g' };
-                score = 95;
-                reason = 'Extremely low-calorie dietary fiber source rich in active micronutrients.';
+            } else if (/salad|soup|sprouts|grilled|steamed|roasted|quinoa|bowl|tofu|paneer|chicken breast|fish|salmon|lentil|dal|greens|broccoli/i.test(name)) {
+                calories = 320; macros = { protein: '26g', carbs: '18g', fat: '12g' };
+                score = 92; suitable = true;
+                reason = 'Nutrient-rich, fiber-dense clean whole food supporting steady glycemic and metabolic balance.';
+                substitute = 'Ask for dressing or sauces on the side to restrict excess sodium and seed oils.';
             }
 
             return {
@@ -465,9 +821,9 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
         return {
             dishes,
-            topPicks: safeDishes.length ? safeDishes.slice(0, 2) : ['Tofu/Chicken House Salad'],
-            avoid: unsafeDishes.length ? unsafeDishes.slice(0, 2) : ['Refined flour pastas/doughs'],
-            generalAdvice: 'Aim for organic grilled protein and high-fiber vegetable options. Avoid rich creamy gravies or heavy maida crusts.'
+            topPicks: safeDishes.length ? safeDishes.slice(0, 3) : ['Fresh Garden Salad with Grilled Protein'],
+            avoid: unsafeDishes.length ? unsafeDishes.slice(0, 3) : ['Refined flour pastas or deep-fried sides'],
+            generalAdvice: 'Prioritize clean grilled or steamed proteins and fiber-rich greens. Steer clear of deep-fried preparations and sugary dessert finishers.'
         };
     }
 
@@ -478,19 +834,20 @@ const runOfflineAnalysis = (input, tab, profile) => {
     const concerns = [];
     const positives = [];
     let personalizedWarning = '';
+    let unknownCount = 0;
 
     tokens.forEach(tok => {
         let matched = false;
         const normTok = tok.toLowerCase().trim();
 
         // Noise filtering
-        if (normTok.length < 3 || /^\d+$/.test(normTok) || /^[^a-z]+$/i.test(normTok)) return;
+        if (normTok.length < 2 || /^\d+$/.test(normTok) || /^[^a-z0-9]+$/i.test(normTok)) return;
 
         // 1. High-risk allergens first
-        if (profileAllergies.includes('nuts') && (normTok.includes('peanut') || normTok.includes('almond') || normTok.includes('cashew') || normTok.includes('walnut') || normTok.includes('hazelnut') || normTok.includes('nut'))) {
+        if (profileAllergies.includes('nuts') && (normTok.includes('peanut') || normTok.includes('almond') || normTok.includes('cashew') || normTok.includes('walnut') || normTok.includes('hazelnut') || normTok.includes('pistachio') || normTok.includes('nut'))) {
             totalScore -= 45;
             allergenAlerts.push('Nuts');
-            personalizedWarning = `CRITICAL ALLERGY ALERT: Found matching nut components (${tok}) which poses severe systemic anaphylaxis risk under your Nuts allergy setting.`;
+            personalizedWarning = "CRITICAL ALLERGY ALERT: Found matching nut components (" + tok + ") which poses severe systemic anaphylaxis risk under your Nuts allergy setting.";
             
             ingredients.push({
                 name: tok.charAt(0).toUpperCase() + tok.slice(1),
@@ -503,10 +860,10 @@ const runOfflineAnalysis = (input, tab, profile) => {
             return;
         }
 
-        if (profileAllergies.includes('dairy') && (normTok.includes('milk') || normTok.includes('cheese') || normTok.includes('butter') || normTok.includes('whey') || normTok.includes('lactose') || normTok.includes('cream'))) {
+        if (profileAllergies.includes('dairy') && (normTok.includes('milk') || normTok.includes('cheese') || normTok.includes('butter') || normTok.includes('whey') || normTok.includes('lactose') || normTok.includes('cream') || normTok.includes('casein') || normTok.includes('curd') || normTok.includes('ghee'))) {
             totalScore -= 35;
             allergenAlerts.push('Dairy');
-            personalizedWarning = `Dairy allergen detected (${tok}). May trigger immediate digestive, inflammatory, or severe immune reactions.`;
+            personalizedWarning = "Dairy allergen detected (" + tok + "). May trigger immediate digestive, inflammatory, or severe immune reactions under active Dairy allergy.";
             
             ingredients.push({
                 name: tok.charAt(0).toUpperCase() + tok.slice(1),
@@ -519,25 +876,42 @@ const runOfflineAnalysis = (input, tab, profile) => {
             return;
         }
 
-        // 2. Scan exact dictionary
-        for (const [key, details] of Object.entries(OFFLINE_INGREDIENTS)) {
+        if (profileAllergies.includes('gluten') && (normTok.includes('wheat') || normTok.includes('maida') || normTok.includes('barley') || normTok.includes('rye') || normTok.includes('malt') || normTok.includes('gluten') || normTok.includes('semolina') || normTok.includes('atta'))) {
+            totalScore -= 40;
+            allergenAlerts.push('Gluten');
+            personalizedWarning = "Gluten-containing grain detected (" + tok + "). Can trigger severe celiac intestinal damage or systemic non-celiac gluten sensitivity.";
+            
+            ingredients.push({
+                name: tok.charAt(0).toUpperCase() + tok.slice(1),
+                status: 'Extremely Harmful',
+                reason: 'Gluten-containing grain conflicting with active Gluten intolerance/Celiac profile.',
+                dailyLimitExceeded: true,
+                limitInfo: 'GLUTEN INTOLERANCE WARNING',
+                healthySubstitute: 'Almond flour, coconut flour, or buckwheat.'
+            });
+            return;
+        }
+
+        // 2. Scan exact expanded dictionary with sorted keys
+        for (const key of sortedKeys) {
             if (normTok.includes(key)) {
                 matched = true;
+                const details = OFFLINE_INGREDIENTS[key];
                 let status = details.status;
-                let deduction = status === 'Extremely Harmful' ? 25 : status === 'Harmful' ? 15 : status === 'Moderate' ? 5 : 0;
+                let deduction = status === 'Extremely Harmful' ? 25 : status === 'Harmful' ? 15 : status === 'Concerning' ? 12 : status === 'Moderate' ? 6 : 0;
                 let limitExceeded = false;
                 let limitInfo = '';
 
-                if (profileConditions.includes('Diabetes') && (key === 'sugar' || key === 'high fructose corn syrup' || key === 'hfcs' || key === 'maida')) {
+                if (profileConditions.includes('diabetes') && (key.includes('sugar') || key.includes('syrup') || key.includes('glucose') || key.includes('dextrose') || key.includes('maltodextrin') || key.includes('fructose') || key.includes('maida') || key.includes('flour'))) {
                     deduction *= 2; status = 'Extremely Harmful'; limitExceeded = true;
                     limitInfo = 'CRITICAL LIMIT EXCEEDED FOR DIABETIC METABOLISM';
-                    personalizedWarning = `High glycemic index ingredient (${tok.toUpperCase()}) found. Poses immediate risks of postprandial glucose surges under Diabetes profile.`;
+                    personalizedWarning = "High glycemic ingredient (" + tok.toUpperCase() + ") found. Poses immediate risks of severe postprandial glucose surges under Diabetes profile.";
                 }
 
-                if (profileConditions.includes('Hypertension') && (key === 'sodium' || key === 'salt' || key === 'msg')) {
+                if (profileConditions.includes('hypertension') && (key.includes('sodium') || key.includes('salt') || key.includes('msg') || key.includes('nitrite') || key.includes('nitrate'))) {
                     deduction *= 2; status = 'Harmful'; limitExceeded = true;
                     limitInfo = 'SODIUM LIMIT WARNING FOR HYPERTENSIVE ARTERIAL PRESSURES';
-                    personalizedWarning = `Sodium-concentrated additive discovered. Exerts immediate fluid retention pressures under Hypertension.`;
+                    personalizedWarning = "Sodium-concentrated additive discovered. Exerts immediate fluid retention pressures under Hypertension.";
                 }
 
                 totalScore -= deduction;
@@ -551,7 +925,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
                     healthySubstitute: details.substitute
                 });
 
-                if (status === 'Extremely Harmful' || status === 'Harmful') concerns.push(`${tok.toUpperCase()}: ${details.reason.slice(0, 60)}...`);
+                if (status === 'Extremely Harmful' || status === 'Harmful' || status === 'Concerning') concerns.push(tok.toUpperCase() + ": " + details.reason.slice(0, 60) + "...");
                 else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
                 break;
             }
@@ -560,59 +934,75 @@ const runOfflineAnalysis = (input, tab, profile) => {
         // 3. Smart Heuristic Regex Engine (Fallback for Unknowns)
         if (!matched) {
             let status = 'Unknown';
-            let reason = 'Ingredient not recognized. May require Deep AI Scan.';
+            let reason = 'Ingredient not recognized in local offline dictionary. May require Deep AI Scan.';
             let deduction = 0;
             let limitExceeded = false;
             let limitInfo = '';
             let substitute = '';
 
             // Sugars & Sweeteners
-            if (/ose\b|itol\b|syrup|sweetener/i.test(normTok)) {
+            if (/ose\b|itol\b|syrup|sweetener|honey|nectar|jaggery/i.test(normTok)) {
                 status = 'Harmful';
-                reason = 'Identified heuristically as a refined sugar, sugar alcohol, or concentrated sweetener. Can cause metabolic stress.';
-                deduction = 10;
+                reason = 'Identified heuristically as a refined sugar, sugar alcohol, or concentrated sweetener. Triggers insulin and metabolic demand.';
+                deduction = 12;
                 substitute = 'Organic Stevia or Monk Fruit extract.';
-                if (profileConditions.includes('Diabetes')) {
+                if (profileConditions.includes('diabetes')) {
                     status = 'Extremely Harmful'; deduction = 25; limitExceeded = true;
                     limitInfo = 'DIABETIC CARBOHYDRATE THRESHOLD DANGER';
                 }
             } 
+            // Uncataloged INS / E numbers
+            else if (/(ins|e)\s*[-]?\s*\d+/i.test(normTok)) {
+                status = 'Harmful';
+                reason = 'Identified as an industrial chemical additive or preservative code (INS/E number). Processed additive with potential digestive sensitivity.';
+                deduction = 12;
+                substitute = 'Fresh whole foods without synthetic food numbers.';
+            }
             // Preservatives & Chemical Acids
-            else if (/ate\b|ite\b|acid/i.test(normTok) && !/citric|ascorbic/i.test(normTok)) {
+            else if (/(benzoat|sorbat|nitrit|nitrat|sulfit|sulfat|propionat|preservative|antioxidant)/i.test(normTok)) {
+                status = 'Harmful';
+                reason = 'Identified heuristically as a synthetic chemical preservative or antioxidant. Can disrupt intestinal microbiome balance.';
+                deduction = 12;
+                substitute = 'Clean, minimally processed organic alternatives.';
+            }
+            // Artificial Flavors & Enhancers
+            else if (/(flavour|flavor|aroma|enhancer|glutamate|ribonucleotide)/i.test(normTok)) {
+                status = 'Harmful';
+                reason = 'Identified heuristically as a synthetic flavor compound or excitotoxic taste enhancer designed to hyper-palatalize processed food.';
+                deduction = 10;
+                substitute = 'Natural culinary spices and fresh herbs.';
+            }
+            // Artificial Colors & Dyes
+            else if (/(color|colour|dye|lake\b|pigment|yellow|red|blue)/i.test(normTok) && !/beet|carrot|berry|turmeric|paprika/i.test(normTok)) {
+                status = 'Harmful';
+                reason = 'Identified heuristically as an artificial synthetic dye or lake color. Associated with behavioral changes and cellular inflammation.';
+                deduction = 15;
+                substitute = 'Natural fruit or vegetable colorings.';
+            }
+            // Emulsifiers & Thickeners
+            else if (/(emulsifi|thickener|stabiliz|gum\b|carrageenan|lecithin|polysorbate|cellulose)/i.test(normTok)) {
                 status = 'Moderate';
-                reason = 'Identified heuristically as a synthetic preservative or chemical salt additive. Prolonged exposure may disrupt gut flora.';
-                deduction = 5;
-            } 
-            // Fats & Oils
-            else if (/oil|fat|tallow|lard|shortening/i.test(normTok)) {
-                if (/hydrogenated|palm/i.test(normTok)) {
-                    status = 'Harmful'; reason = 'Trans-fats or high-saturated inflammatory oils detected. Severely damages cardiovascular elasticity.';
-                    deduction = 15; substitute = 'Cold-pressed extra virgin olive oil or avocado oil.';
-                } else {
-                    status = 'Safe'; reason = 'Standard dietary lipid source detected.';
-                }
+                reason = 'Identified heuristically as an industrial food emulsifier or thickener. May alter mucosal lining and gut microbiota.';
+                deduction = 6;
+                substitute = 'Natural dietary pectin or chia seeds.';
             }
-            // Thickeners & Emulsifiers
-            else if (/gum\b|carrageenan|lecithin/i.test(normTok)) {
-                status = 'Moderate'; reason = 'Processed emulsifier or thickener. Can cause mild gastrointestinal inflammation in sensitive individuals.';
-                deduction = 5;
-            }
-            // Salts & Minerals
-            else if (/sodium|potassium|calcium|chloride/i.test(normTok)) {
-                status = 'Moderate'; reason = 'Mineral salt additive detected. Watch overall daily intake limits.';
-                if (profileConditions.includes('Hypertension')) {
+            // Salts & Sodium
+            else if (/(sodium|potassium|chloride|salt\b|salts\b)/i.test(normTok)) {
+                status = 'Safe';
+                reason = 'Dietary mineral salt compound detected.';
+                if (profileConditions.includes('hypertension')) {
                     status = 'Harmful'; deduction = 15; limitExceeded = true;
                     limitInfo = 'HYPERTENSION SODIUM WARNING';
                 }
             }
-            // Artificial Colors
-            else if (/yellow|red|blue|color|lake/i.test(normTok)) {
-                status = 'Harmful'; reason = 'Artificial chemical food dye detected. Linked to hyperactivity and neurotoxicity markers.';
-                deduction = 15; substitute = 'Natural fruit/vegetable color extracts.';
+            // Healthy Whole Food Bases
+            else if (/(extract|juice|water|puree|flour|meal|seed|nut|bean|lentil|leaf|vegetable|fruit|herb|spice)/i.test(normTok) && !/bleached|refined|modified/i.test(normTok)) {
+                status = 'Safe';
+                reason = 'Natural agricultural plant or whole-food base ingredient.';
             }
-            // Natural bases
-            else if (/extract|juice|water|puree/i.test(normTok)) {
-                status = 'Safe'; reason = 'Natural whole-food base ingredient.';
+            else {
+                unknownCount++;
+                deduction = 4;
             }
 
             if (status !== 'Unknown') matched = true;
@@ -627,33 +1017,37 @@ const runOfflineAnalysis = (input, tab, profile) => {
             });
             totalScore -= deduction;
             
-            if (status === 'Extremely Harmful' || status === 'Harmful') concerns.push(`${tok.toUpperCase()}: ${reason.slice(0, 60)}...`);
+            if (status === 'Extremely Harmful' || status === 'Harmful' || status === 'Concerning') concerns.push(tok.toUpperCase() + ": " + reason.slice(0, 60) + "...");
             else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
         }
     });
+
+    if (unknownCount >= 3 && totalScore > 75) {
+        totalScore = 75;
+    }
 
     const score = Math.max(0, Math.min(100, totalScore));
     let overallRating = 'Safe';
     if (score < 40) overallRating = 'Extremely Harmful';
     else if (score < 60) overallRating = 'Harmful';
-    else if (score < 85) overallRating = 'Moderate';
+    else if (score < 80) overallRating = 'Moderate';
 
     return {
         productName: tokens[0] ? tokens[0].toUpperCase() + ' - Scanned Product' : 'Product Analysis',
         overallScore: score,
         overallRating,
         nutriscoreGrade: score > 85 ? 'A' : score > 70 ? 'B' : score > 50 ? 'C' : score > 35 ? 'D' : 'E',
-        personalizedWarning: personalizedWarning || (score < 60 ? 'Multiple health-risk ingredients detected violating general metabolic wellness goals.' : ''),
+        personalizedWarning: personalizedWarning || (score < 60 ? 'Multiple health-risk ingredients detected violating metabolic wellness standards.' : ''),
         ingredients,
         nutritionFlags: [
-            { nutrient: 'Sugar / Carbs', value: cleanText.includes('sugar') ? 'High' : 'Normal', flag: cleanText.includes('sugar') ? 'danger' : 'ok', note: 'Checked locally.' },
+            { nutrient: 'Sugar / Carbs', value: cleanText.includes('sugar') || cleanText.includes('syrup') || cleanText.includes('glucose') ? 'High' : 'Normal', flag: cleanText.includes('sugar') || cleanText.includes('syrup') || cleanText.includes('glucose') ? 'danger' : 'ok', note: 'Checked locally.' },
             { nutrient: 'Sodium / Salts', value: cleanText.includes('sodium') || cleanText.includes('salt') ? 'Moderate-High' : 'Low', flag: cleanText.includes('sodium') || cleanText.includes('salt') ? 'warning' : 'ok', note: 'Standard dietary thresholds.' }
         ],
         allergenAlert: allergenAlerts,
         topConcerns: concerns.slice(0, 3),
         positives: positives.slice(0, 3),
         overallSubstituteSuggestion: score < 70 ? 'Replace with clean, minimally processed organic whole foods.' : 'Excellent choice! Nutritional values align fully with your health guard goals.',
-        summary: `Personalized safety score rated at ${score}/100. Scanned via local offline algorithms.`
+        summary: "Personalized safety score rated at " + score + "/100. Scanned via enhanced offline databases."
     };
 };
 
@@ -802,10 +1196,12 @@ const IngredientChip = ({ item }) => {
         'Harmful': 'bg-brand-coral/5 text-brand-coral border-brand-coral/20 hover:bg-brand-coral/10',
         'Extremely Harmful': 'bg-red-500/10 text-red-400 border-red-500/20 pulse-danger hover:bg-red-500/20',
         'Avoid': 'bg-brand-coral/10 text-brand-coral border-brand-coral/20 hover:bg-brand-coral/15',
-        'Concerning': 'bg-brand-amber/10 text-brand-amber border-brand-amber/20 hover:bg-brand-amber/15'
+        'Concerning': 'bg-brand-amber/10 text-brand-amber border-brand-amber/20 hover:bg-brand-amber/15',
+        'Unknown': 'bg-slate-800/40 text-slate-300 border-slate-700/50 hover:bg-slate-800/60'
     };
 
-    const isAlert = item.status === 'Harmful' || item.status === 'Extremely Harmful' || item.status === 'Avoid';
+    const isAlert = item.status === 'Harmful' || item.status === 'Extremely Harmful' || item.status === 'Avoid' || item.status === 'Concerning';
+    const isUnknown = item.status === 'Unknown';
 
     return (
         <div className={`mb-3 rounded-2xl border transition-all duration-500 overflow-hidden ${expanded ? 'bg-white/[0.04] shadow-xl border-white/10' : 'bg-transparent border-white/[0.04]'}`}>
@@ -817,6 +1213,10 @@ const IngredientChip = ({ item }) => {
                     {isAlert ? (
                         <div className="w-5 h-5 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400 flex-shrink-0 animate-pulse">
                             <Icon name="alert" className="w-3.5 h-3.5" />
+                        </div>
+                    ) : isUnknown ? (
+                        <div className="w-5 h-5 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 flex-shrink-0">
+                            <Icon name="search" className="w-3.5 h-3.5" />
                         </div>
                     ) : (
                         <div className="w-5 h-5 rounded-lg bg-brand-teal/20 flex items-center justify-center text-brand-teal flex-shrink-0">
@@ -916,22 +1316,15 @@ const SafeLens = () => {
         setError(null);
 
         try {
-            // ALWAYS run offline first
-            let localResult;
-            if (activeTab === TABS.FOOD || activeTab === TABS.SKIN) {
-                localResult = runOfflineAnalysis(inputData, activeTab, profile);
-                
-                // Check if there are unknowns
-                let hasUnknowns = false;
-                if (localResult.ingredients && localResult.ingredients.some(i => i.status === 'Unknown')) {
-                    hasUnknowns = true;
-                }
-                localResult.needsAI = hasUnknowns;
-            } else {
-                // For meds and menu, we don't have offline logic, so we just run deep analysis automatically
-                runDeepAnalysis(inputData);
-                return;
+            // Run instant offline analysis across all tabs
+            const localResult = runOfflineAnalysis(inputData, activeTab, profile);
+            
+            // Check if AI Deep Scan is helpful
+            let hasUnknowns = false;
+            if (localResult.ingredients && localResult.ingredients.some(i => i.status === 'Unknown')) {
+                hasUnknowns = true;
             }
+            localResult.needsAI = hasUnknowns;
 
             setAnalysis(localResult);
             setScanHistory(prev => [{ id: Date.now(), date: new Date().toLocaleString(), type: activeTab, result: localResult, productName: localResult.productName || localResult.overallRisk || 'Local Analysis' }, ...prev].slice(0, 50));
