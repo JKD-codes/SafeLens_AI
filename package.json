@@ -1,9 +1,14 @@
 {
   "name": "safelens-ai",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "SafeLens - AI Health Guard & Label Scanner",
+  "main": "server.js",
   "scripts": {
-    "dev": "npx serve"
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": [],
   "author": "",

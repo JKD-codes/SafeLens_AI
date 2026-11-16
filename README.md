@@ -65,34 +65,40 @@ When the offline heuristic engine encounters highly ambiguous or complex ingredi
 ## 💻 Getting Started
 
 ### Prerequisites
-Make sure you have Node.js and npm installed.
+Node.js 18+ (no `npm install` needed, the server has zero dependencies).
 
-### Installation
-1. Clone the repository:
-   \`\`\`bash
+### Run locally
+1. Clone the repository and enter it:
+   ```bash
    git clone https://github.com/JKD-codes/SafeLens_AI.git
-   \`\`\`
-2. Navigate into the directory:
-   \`\`\`bash
    cd SafeLens_AI
-   \`\`\`
-3. Install dependencies:
-   \`\`\`bash
-   npm install
-   \`\`\`
-4. Set up your Groq API Key:
-   * Create a `.env` file in the root directory.
-   * Add your key: `REACT_APP_GROQ_API_KEY=your_api_key_here`
-5. Start the development server:
-   \`\`\`bash
+   ```
+2. Copy `.env.example` to `.env` and set your Groq key (get one at https://console.groq.com/keys):
+   ```
+   GROQ_API_KEY=your_api_key_here
+   ```
+3. Start the app and open http://localhost:3000:
+   ```bash
    npm start
-   \`\`\`
+   ```
+
+The offline engine and OCR work without a key; only the **Deep AI Scan** needs `GROQ_API_KEY`.
+
+### Deploy to Vercel
+Deploy the repo as-is. `api/analyze.js` becomes the serverless backend. Set `GROQ_API_KEY` in the Vercel project's environment variables.
+
+### Architecture
+| Layer | File | Notes |
+|---|---|---|
+| OCR | `SafeLens.js` (`performOCR`) | Tesseract.js v5, reused worker, resize + contrast normalization, low-confidence retry |
+| Offline engine | `SafeLens.js` (`runOfflineAnalysis`) | Whole-word ingredient matching, INS/E-code normalization, allergen rules for all profile allergies, brand→generic drug mapping |
+| Deep AI backend | `api/_lib.js`, `api/analyze.js`, `server.js` | Prompts + Groq key live server-side only; timeouts, model fallback, JSON repair |
 
 ---
 
 ## 🛡️ Privacy First
 We believe your health data is yours. 
-* 🚫 **No Image Uploads:** The camera stream is processed in your browser memory.
+* 🚫 **No Image Uploads:** OCR runs in your browser. Only the extracted text is sent to the backend, and only when you request a Deep AI Scan.
 * 🚫 **No Databases:** Your medical profile and allergies are stored locally on your device.
 
 ---

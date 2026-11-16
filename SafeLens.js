@@ -436,84 +436,308 @@ const Icon = ({ name, className = "w-6 h-6" }) => {
     );
 };
 
-// --- Direct Client-Side Tesseract OCR ---
+// --- Client-Side Tesseract OCR (v5, reusable worker) ---
+let ocrWorkerPromise = null;
+let ocrProgressCb = null;
+
+const getOcrWorker = () => {
+    if (!ocrWorkerPromise) {
+        ocrWorkerPromise = Tesseract.createWorker('eng', 1, {
+            logger: m => ocrProgressCb && ocrProgressCb(m.status, m.progress || 0)
+        }).then(async (worker) => {
+            await worker.setParameters({
+                tessedit_pageseg_mode: '6',     // single uniform block of text (label paragraphs)
+                preserve_interword_spaces: '1'
+            });
+            return worker;
+        }).catch(err => { ocrWorkerPromise = null; throw err; });
+    }
+    return ocrWorkerPromise;
+};
+
+const loadImage = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not read this image file.'));
+    img.src = src;
+});
+
+// Resize to an OCR-friendly resolution, convert to luminance grayscale and stretch contrast.
+// (Hard binarization hurts on glossy/curved labels, so we only normalize and let Tesseract threshold.)
+const preprocessForOCR = (img) => {
+    const longest = Math.max(img.width, img.height);
+    const scale = longest > 2400 ? 2400 / longest : longest < 1200 ? 1200 / longest : 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imageData.data;
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < d.length; i += 4) {
+        const y = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+        d[i] = y;
+        hist[y]++;
+    }
+    // Contrast stretch between 1st and 99th percentile
+    const total = d.length / 4;
+    let lo = 0, hi = 255, acc = 0;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > total * 0.01) { lo = v; break; } }
+    acc = 0;
+    for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > total * 0.01) { hi = v; break; } }
+    const range = Math.max(1, hi - lo);
+    // Light text on dark background -> invert so text is dark
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += d[i];
+    const invert = sum / total < 110;
+    for (let i = 0; i < d.length; i += 4) {
+        let v = Math.max(0, Math.min(255, ((d[i] - lo) * 255) / range));
+        if (invert) v = 255 - v;
+        d[i] = d[i + 1] = d[i + 2] = v;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+};
+
+// Clean typical OCR artefacts without destroying ingredient punctuation
+const cleanOcrText = (text) => (text || '')
+    .replace(/[|¦]/g, ',')
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/-\s*\n\s*/g, '')          // re-join hyphenated line breaks
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+
 const performOCR = async (imageSrc, onProgress) => {
     try {
-        // Pre-process image for better OCR (grayscale & contrast)
-        const img = new Image();
-        img.src = imageSrc;
-        await new Promise(resolve => img.onload = resolve);
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.drawImage(img, 0, 0);
-        
-        // Apply grayscale and high contrast filter
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            avg = avg < 128 ? avg / 1.5 : Math.min(255, avg * 1.5);
-            data[i] = avg;     
-            data[i + 1] = avg; 
-            data[i + 2] = avg; 
+        ocrProgressCb = onProgress || null;
+        const img = await loadImage(imageSrc);
+        const canvas = preprocessForOCR(img);
+        const worker = await getOcrWorker();
+        const { data } = await worker.recognize(canvas);
+        let text = cleanOcrText(data.text);
+        // Low confidence: retry on the original colour image (sometimes preprocessing hurts)
+        if (data.confidence < 45) {
+            const retry = await worker.recognize(img);
+            if (retry.data.confidence > data.confidence) text = cleanOcrText(retry.data.text);
         }
-        ctx.putImageData(imageData, 0, 0);
-        const processedSrc = canvas.toDataURL('image/png');
-
-        // Simplified single-call Tesseract recognition
-        const { data: { text } } = await Tesseract.recognize(
-            processedSrc,
-            'eng',
-            { 
-                tessedit_pageseg_mode: '1', 
-                logger: m => onProgress && onProgress(m.status, m.progress) 
-            }
-        );
         return text;
     } catch (err) {
-        console.error("OCR Core Error:", err);
-        return "";
+        console.error('OCR Core Error:', err);
+        throw new Error(err.message && err.message.indexOf('image') !== -1 ? err.message : 'OCR engine failed to load. Check your connection and try again.');
+    } finally {
+        ocrProgressCb = null;
     }
 };
 
-// --- Direct CORS-Enabled Groq API Client Fetch ---
-const callGroq = async (apiKey, prompt) => {
-    const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
-    let lastError = null;
+// --- Deep AI Analysis (via SafeLens backend; the API key never reaches the browser) ---
+const callDeepAI = async (tab, text, profile) => {
+    if (window.location.protocol === 'file:') {
+        throw new Error('Deep AI needs the SafeLens server. Run "npm start" and open http://localhost:3000');
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60000);
+    try {
+        const res = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tab,
+                text: text.slice(0, 6000),
+                profile: { age: profile.age, conditions: profile.conditions, allergies: profile.allergies, skinType: profile.skinType, goal: profile.goal }
+            }),
+            signal: ctrl.signal
+        });
+        let data = null;
+        try { data = await res.json(); } catch (_) {}
+        if (!res.ok) {
+            if (res.status === 404) throw new Error('Deep AI backend not found. Start the app with "npm start" (or deploy the /api folder).');
+            throw new Error((data && data.error) || ('Deep AI request failed (' + res.status + ')'));
+        }
+        return normalizeResult(tab, data);
+    } catch (err) {
+        if (err.name === 'AbortError') throw new Error('Deep AI timed out. Please try again.');
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+};
 
-    for (const model of models) {
-        try {
-            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': "Bearer " + apiKey
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: "user", content: prompt }],
-                    response_format: { type: "json_object" }
-                })
-            });
+// Guarantee the UI always receives the shape it expects, whatever the model returns
+const normalizeResult = (tab, r) => {
+    r = (r && typeof r === 'object') ? r : {};
+    const arr = (v) => Array.isArray(v) ? v : [];
+    const strArr = (v) => arr(v).map(x => typeof x === 'string' ? x : (x && (x.name || x.text)) || '').filter(Boolean);
+    const num = (v, d) => { const n = Number(v); return isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : d; };
+    const pick = (v, allowed, d) => allowed.indexOf(v) !== -1 ? v : d;
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error((errorData.error && errorData.error.message) || ("Groq API error (" + response.status + ")"));
-            }
+    if (tab === TABS.MEDS) {
+        return {
+            medicines: strArr(r.medicines),
+            interactions: arr(r.interactions).filter(i => i && i.drug1).map(i => ({
+                drug1: String(i.drug1), drug2: String(i.drug2 || ''),
+                severity: pick(i.severity, ['None', 'Minor', 'Moderate', 'Major', 'Contraindicated'], 'Moderate'),
+                effect: String(i.effect || ''), recommendation: String(i.recommendation || '')
+            })),
+            overallRisk: pick(r.overallRisk, ['Safe', 'Caution', 'High Risk', 'Dangerous'], 'Caution'),
+            generalAdvice: String(r.generalAdvice || ''),
+            disclaimer: String(r.disclaimer || 'Always consult a licensed physician or pharmacist. This evaluation is educational only.')
+        };
+    }
+    if (tab === TABS.MENU) {
+        return {
+            dishes: arr(r.dishes).filter(d => d && d.name).map(d => ({
+                name: String(d.name), estimatedCalories: Number(d.estimatedCalories) || 0,
+                macros: Object.assign({ protein: '-', carbs: '-', fat: '-' }, d.macros || {}),
+                allergens: strArr(d.allergens), healthScore: num(d.healthScore, 50), suitable: !!d.suitable,
+                reason: String(d.reason || ''), healthierVersion: String(d.healthierVersion || '')
+            })),
+            topPicks: strArr(r.topPicks), avoid: strArr(r.avoid), generalAdvice: String(r.generalAdvice || '')
+        };
+    }
+    if (tab === TABS.SKIN) {
+        const st = ['Safe', 'Moderate', 'Concerning', 'Avoid'];
+        return {
+            overallScore: num(r.overallScore, 50),
+            overallRating: pick(r.overallRating, st, 'Moderate'),
+            ingredients: arr(r.ingredients).filter(i => i && i.name).map(i => ({
+                name: String(i.name), function: String(i.function || ''), status: pick(i.status, st, 'Moderate'),
+                reason: String(i.reason || ''), comedogenic: !!i.comedogenic, endocrineDisruptor: !!i.endocrineDisruptor,
+                healthySubstitute: String(i.healthySubstitute || '')
+            })),
+            topConcerns: strArr(r.topConcerns).slice(0, 3), positives: strArr(r.positives).slice(0, 3),
+            skinTypeWarning: String(r.skinTypeWarning || ''), summary: String(r.summary || '')
+        };
+    }
+    const fs = ['Safe', 'Moderate', 'Harmful', 'Extremely Harmful'];
+    return {
+        productName: String(r.productName || 'Scanned Product'),
+        overallScore: num(r.overallScore, 50),
+        overallRating: pick(r.overallRating, fs, 'Moderate'),
+        nutriscoreGrade: pick(String(r.nutriscoreGrade || '').toUpperCase(), ['A', 'B', 'C', 'D', 'E'], 'C'),
+        personalizedWarning: String(r.personalizedWarning || ''),
+        ingredients: arr(r.ingredients).filter(i => i && i.name).map(i => ({
+            name: String(i.name), status: pick(i.status, fs, 'Moderate'), reason: String(i.reason || ''),
+            dailyLimitExceeded: !!i.dailyLimitExceeded, limitInfo: String(i.limitInfo || ''),
+            healthySubstitute: String(i.healthySubstitute || '')
+        })),
+        nutritionFlags: arr(r.nutritionFlags).filter(n => n && n.nutrient).map(n => ({
+            nutrient: String(n.nutrient), value: String(n.value || ''), flag: pick(n.flag, ['ok', 'warning', 'danger'], 'warning'), note: String(n.note || '')
+        })),
+        allergenAlert: strArr(r.allergenAlert),
+        topConcerns: strArr(r.topConcerns).slice(0, 3), positives: strArr(r.positives).slice(0, 3),
+        overallSubstituteSuggestion: String(r.overallSubstituteSuggestion || ''),
+        summary: String(r.summary || '')
+    };
+};
 
-            const data = await response.json();
-            const text = data.choices[0].message.content;
-            return JSON.parse(text);
-        } catch (err) {
-            lastError = err;
-            console.warn("Groq model " + model + " attempt failed:", err.message);
+// --- Offline engine matching helpers ---
+const escapeRe = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Normalize additive codes: "E-211", "INS211", "e 211" -> "ins 211"
+const normCodes = (str) => str.replace(/\b(?:ins|e)\s*[-.]?\s*(\d{3,4}[a-z]?)\b/gi, 'ins $1');
+
+// Whole-word term match (allows plural s/es) so "tea" doesn't match "instead", "rice" doesn't match "licorice"
+const termRegexCache = {};
+const hasTerm = (text, term) => {
+    let re = termRegexCache[term];
+    if (!re) {
+        re = new RegExp('(^|[^a-z0-9])' + escapeRe(term) + '(e?s)?(?=$|[^a-z0-9])', 'i');
+        termRegexCache[term] = re;
+    }
+    return re.test(text);
+};
+
+// Dictionary keys, normalized and sorted longest-first for best phrase match
+const DICT_ENTRIES = Object.keys(OFFLINE_INGREDIENTS)
+    .map(key => ({ key, term: normCodes(key.toLowerCase()) }))
+    .sort((a, b) => b.term.length - a.term.length);
+const findDictEntry = (tok) => DICT_ENTRIES.find(e => hasTerm(tok, e.term));
+
+// Allergen detection rules (word-boundary based, with plant-based / look-alike exclusions)
+const ALLERGEN_RULES = {
+    nuts: {
+        re: /\b(peanuts?|groundnuts?|almonds?|cashews?|walnuts?|hazelnuts?|pistachios?|pecans?|macadamia|brazil nuts?|tree nuts?|nuts?|badam|kaju|praline|marzipan|nougat)\b/i,
+        exclude: /nut[\s-]?free|free from nuts/i,
+        label: 'Nuts', substitute: 'Sunflower seed butter or pumpkin seeds.'
+    },
+    dairy: {
+        re: /\b(milk|cheese|butter|buttermilk|whey|lactose|cream|casein(ate)?s?|curds?|ghee|yog(h)?urt|paneer|khoa|khoya|lactalbumin|lactoglobulin|dairy)\b/i,
+        exclude: /\b(cocoa|cacao|shea|peanut|nut|coconut|almond|soy|soya|oat|rice|cashew|apple|mango|kokum|illipe)\s+(milk|butter|cream)|cream of tartar|dairy[\s-]?free|milk[\s-]?free/i,
+        label: 'Dairy', substitute: 'Oat milk, almond milk, or vegan nutritional cheese.'
+    },
+    gluten: {
+        re: /\b(wheat|maida|barley|rye|malt|malt extract|gluten|semolina|sooji|suji|rava|atta|spelt|seitan|couscous|bulgur|triticale|farina|durum)\b/i,
+        exclude: /gluten[\s-]?free|buckwheat/i,
+        label: 'Gluten', substitute: 'Almond flour, coconut flour, rice or buckwheat.'
+    },
+    soy: {
+        re: /\b(soy|soya|soybeans?|soyabeans?|tofu|edamame|tempeh|miso|shoyu|tamari)\b/i,
+        exclude: /soy[\s-]?free/i,
+        label: 'Soy', substitute: 'Sunflower lecithin or soy-free alternatives.'
+    },
+    eggs: {
+        re: /\b(eggs?|egg yolks?|egg whites?|albumin|ovalbumin|lysozyme|mayonnaise|meringue)\b/i,
+        exclude: /egg[\s-]?free|eggless|eggplant/i,
+        label: 'Eggs', substitute: 'Flax egg, chia gel or aquafaba.'
+    },
+    shellfish: {
+        re: /\b(shellfish|shrimps?|prawns?|crabs?|lobsters?|crayfish|krill|oysters?|mussels?|clams?|scallops?|squid|calamari|octopus)\b/i,
+        exclude: /shellfish[\s-]?free/i,
+        label: 'Shellfish', substitute: 'Plant-based or finfish alternatives (if tolerated).'
+    }
+};
+
+// Returns the allergen label hit by this token for the user's allergies (presets + custom free-text)
+const matchAllergen = (tok, allergies) => {
+    for (const a of allergies) {
+        const rule = ALLERGEN_RULES[a];
+        if (rule) {
+            if (rule.re.test(tok) && !rule.exclude.test(tok)) return rule;
+        } else if (a.length > 2 && hasTerm(tok, a)) {
+            return { label: a.charAt(0).toUpperCase() + a.slice(1), substitute: 'A product free from ' + a + '.' };
         }
     }
-    throw lastError || new Error('Groq AI connection failed.');
+    return null;
+};
+
+// Keep only the ingredient section of an OCR'd label (drop nutrition tables, addresses, etc.)
+const extractIngredientSection = (raw) => {
+    let t = raw;
+    const start = t.search(/\b(ingredients?|ingr[e\u00e9]dients|composition|inci)\b\s*[:\-;]?/i);
+    if (start > 0) t = t.slice(start);
+    const end = t.search(/\b(nutrition(al)?\s+(information|facts|values?)|typical values|best before|use by|exp(iry)?\.?\s*date|mfd\.?|mfg\.?|manufactured|marketed by|packed by|net\s*(wt|weight|qty|quantity|content)|m\.?r\.?p|storage|store in|directions( for use)?|how to use|customer care|fssai|lic\.?\s*no|batch\s*no|for external use)\b/i);
+    if (end > 15) t = t.slice(0, end);
+    return t;
+};
+
+// Known drug names + common brand aliases (India/US) -> generic used in MED_INTERACTIONS
+const DRUG_ALIASES = {
+    crocin: 'paracetamol', dolo: 'paracetamol', calpol: 'paracetamol', panadol: 'paracetamol', tylenol: 'acetaminophen',
+    advil: 'ibuprofen', motrin: 'ibuprofen', brufen: 'ibuprofen', combiflam: 'ibuprofen',
+    ecosprin: 'aspirin', disprin: 'aspirin', 'asa': 'aspirin',
+    coumadin: 'warfarin', plavix: 'clopidogrel', clopilet: 'clopidogrel',
+    prilosec: 'omeprazole', omez: 'omeprazole', pantocid: 'pantoprazole', pan: 'pantoprazole', protonix: 'pantoprazole',
+    glycomet: 'metformin', glucophage: 'metformin',
+    viagra: 'sildenafil', cialis: 'tadalafil', nitrostat: 'nitroglycerin', glyceryl: 'nitroglycerin', sorbitrate: 'nitroglycerin', isosorbide: 'nitroglycerin',
+    zocor: 'simvastatin', lipitor: 'atorvastatin', atorva: 'atorvastatin', biaxin: 'clarithromycin', claribid: 'clarithromycin',
+    ultram: 'tramadol', prozac: 'fluoxetine', zoloft: 'sertraline',
+    prinivil: 'lisinopril', zestril: 'lisinopril', aldactone: 'spironolactone',
+    cipro: 'ciprofloxacin', ciplox: 'ciprofloxacin', shelcal: 'calcium',
+    lanoxin: 'digoxin', cordarone: 'amiodarone',
+    synthroid: 'levothyroxine', thyronorm: 'levothyroxine', eltroxin: 'levothyroxine', thyroxine: 'levothyroxine',
+    ethanol: 'alcohol', beer: 'alcohol', wine: 'alcohol', whiskey: 'alcohol', vodka: 'alcohol'
+};
+const KNOWN_DRUGS = Array.from(new Set(MED_INTERACTIONS.reduce((acc, m) => acc.concat([m.drug1, m.drug2]), [])));
+
+const detectDrugs = (text) => {
+    const found = new Set();
+    KNOWN_DRUGS.forEach(d => { if (hasTerm(text, d)) found.add(d); });
+    Object.keys(DRUG_ALIASES).forEach(b => { if (hasTerm(text, b)) found.add(DRUG_ALIASES[b]); });
+    return Array.from(found);
 };
 
 // --- Smart Local Offline Analysis Engine ---
@@ -522,16 +746,17 @@ const runOfflineAnalysis = (input, tab, profile) => {
     const profileAllergies = (profile.allergies || []).map(a => a.toLowerCase());
     const profileConditions = (profile.conditions || []).map(c => c.toLowerCase());
     
-    // Sort dictionary keys by length descending for accurate longest-phrase matching
-    const sortedKeys = Object.keys(OFFLINE_INGREDIENTS).sort((a, b) => b.length - a.length);
 
     // 2. Clean input and tokenize
-    let cleanText = input.toLowerCase()
-        .replace(/^(ingredients|composition|nutrition\s+facts|contains|ingredients\s*\/|\s*:)+/i, '')
+    const section = (tab === TABS.FOOD || tab === TABS.SKIN) ? extractIngredientSection(input) : input;
+    let cleanText = normCodes(section.toLowerCase())
+        .replace(/^\s*(ingredients?|composition|inci|contains)\s*[:\-;]?\s*/i, '')
         .replace(/\([ivx\s]+\)/gi, '') // normalize roman numerals e.g. (ii) in INS 503(ii)
         .replace(/\[/g, '(')
         .replace(/\]/g, ')')
         .replace(/[•|\/]/g, ',');
+    // OCR wraps long ingredient names across lines; in comma-separated lists newlines are not separators
+    if ((cleanText.match(/,/g) || []).length >= 3) cleanText = cleanText.replace(/\s*\n\s*/g, ' ');
 
     const tokens = cleanText.split(/[,;\n\(\)\{\}]/)
         .map(t => t.trim()
@@ -543,45 +768,39 @@ const runOfflineAnalysis = (input, tab, profile) => {
             .replace(/\.$/, '')
             .trim()
         )
-        .filter(t => t.length > 1 && !/^\d+$/.test(t) && !/^(i|ii|iii|iv|v|vi)$/i.test(t));
+        // Bare additive numbers, e.g. "Emulsifier (322, 471)" -> "ins 322"
+        .map(t => (tab === TABS.FOOD && /^\d{3}[a-z]?$/.test(t)) ? 'ins ' + t : t)
+        .filter(t => t.length > 1 && !/^\d+$/.test(t) && !/^(i|ii|iii|iv|v|vi)$/i.test(t))
+        .filter((t, i, arr) => arr.indexOf(t) === i);
 
     if (tab === TABS.MEDS) {
         // --- Medications offline engine ---
-        const activeMeds = tokens.map(t => t.split(/[\s\/\-]+/)[0].toLowerCase());
+        const detected = detectDrugs(cleanText);
         const interactions = [];
-        let highRiskCount = 0;
-        
-        for (let i = 0; i < activeMeds.length; i++) {
-            for (let j = i + 1; j < activeMeds.length; j++) {
-                const m1 = activeMeds[i];
-                const m2 = activeMeds[j];
-                const match = MED_INTERACTIONS.find(item => 
-                    (item.drug1.includes(m1) || m1.includes(item.drug1)) && 
-                    (item.drug2.includes(m2) || m2.includes(item.drug2))
-                ) || MED_INTERACTIONS.find(item => 
-                    (item.drug1.includes(m2) || m2.includes(item.drug1)) && 
-                    (item.drug2.includes(m1) || m1.includes(item.drug2))
-                );
-                if (match) {
+        let worst = 0; // 0 none, 1 moderate, 2 major/contraindicated
+        for (let i = 0; i < detected.length; i++) {
+            for (let j = i + 1; j < detected.length; j++) {
+                const a = detected[i], b = detected[j];
+                const match = MED_INTERACTIONS.find(m => (m.drug1 === a && m.drug2 === b) || (m.drug1 === b && m.drug2 === a));
+                if (match && match.severity !== 'None') {
                     interactions.push(match);
-                    if (match.severity === 'Major' || match.severity === 'Contraindicated') {
-                        highRiskCount += 2;
-                    } else if (match.severity === 'Moderate') {
-                        highRiskCount += 1;
-                    }
+                    worst = Math.max(worst, (match.severity === 'Major' || match.severity === 'Contraindicated') ? 2 : match.severity === 'Moderate' ? 1 : 0);
                 }
             }
         }
-        
+
         let overallRisk = 'Safe';
-        let advice = 'No hazardous drug-to-drug interactions were detected in our offline core clinical dictionary.';
-        
-        if (highRiskCount >= 2) {
+        let advice = 'No known interactions between these medicines in the offline database.';
+        if (worst === 2) {
             overallRisk = 'Dangerous';
             advice = 'CRITICAL: Dangerous medication interactions detected. Co-administration poses severe toxicity or adverse clinical risks. Consult your prescribing physician immediately.';
-        } else if (highRiskCount === 1) {
+        } else if (worst === 1) {
             overallRisk = 'Caution';
             advice = 'WARNING: Moderate medication interactions found. May result in reduced therapeutic efficacy, altered blood pressure, or organ stress.';
+        } else if (tokens.length > detected.length) {
+            // Some medicines were not recognized offline -> do not claim "Safe"
+            overallRisk = 'Caution';
+            advice = 'Some medicines were not recognized by the offline database (it covers common high-risk pairs only). Run the Deep AI Scan for a complete interaction check.';
         }
 
         if (profileConditions.includes('diabetes') && cleanText.includes('steroid')) {
@@ -619,8 +838,10 @@ const runOfflineAnalysis = (input, tab, profile) => {
             if (normTok.length < 2 || /^\d+$/.test(normTok) || /^[^a-z0-9]+$/i.test(normTok)) return;
 
             // 1. Scan expanded cosmetic DB with sorted keys
-            for (const key of sortedKeys) {
-                if (normTok.includes(key)) {
+            const entry = findDictEntry(normTok);
+            if (entry) {
+                const key = entry.key;
+                {
                     matched = true;
                     const details = OFFLINE_INGREDIENTS[key];
                     let status = details.status;
@@ -652,7 +873,6 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
                     if (status === 'Avoid' || status === 'Concerning' || status === 'Harmful') topConcerns.push(tok.toUpperCase() + ": " + details.reason.slice(0, 60) + "...");
                     else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
-                    break;
                 }
             }
 
@@ -753,17 +973,12 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
             const name = dish.toLowerCase();
 
-            // Allergen alerts
-            if (profileAllergies.includes('nuts') && (name.includes('nut') || name.includes('peanut') || name.includes('cashew') || name.includes('almond') || name.includes('pesto') || name.includes('walnut'))) {
-                score -= 50; suitable = false; allergens.push('Nuts');
-                reason = 'CRITICAL ALLERGY ALERT: Contains nuts. Severe anaphylaxis risk under active Nuts allergy setting.';
-                substitute = 'Request a completely nut-free seed alternative.';
-            }
-            if (profileAllergies.includes('dairy') && (name.includes('cheese') || name.includes('paneer') || name.includes('butter') || name.includes('cream') || name.includes('alfredo') || name.includes('fondue') || name.includes('milkshake'))) {
-                score -= 50; suitable = false; allergens.push('Dairy');
-                reason = 'CRITICAL ALLERGY ALERT: Dairy components detected under active Dairy allergy setting.';
-                substitute = 'Request dairy-free / vegan preparation without butter or cheese.';
-            }
+            // Allergen alerts (applied after grading below so they are not overwritten)
+            const menuAllergens = [];
+            profileAllergies.forEach(al => {
+                const hit = matchAllergen(name, [al]);
+                if (hit && menuAllergens.indexOf(hit.label) === -1) menuAllergens.push(hit.label);
+            });
 
             // Food category grading
             if (/fries|fried|crispy|tempura|nuggets|wings|fritters|pakora|samosa|puri|bhatura|chole bhature|chips|spring roll/i.test(name)) {
@@ -802,6 +1017,13 @@ const runOfflineAnalysis = (input, tab, profile) => {
                 score = 92; suitable = true;
                 reason = 'Nutrient-rich, fiber-dense clean whole food supporting steady glycemic and metabolic balance.';
                 substitute = 'Ask for dressing or sauces on the side to restrict excess sodium and seed oils.';
+            }
+
+            if (menuAllergens.length) {
+                allergens = menuAllergens;
+                score = Math.min(score, 15); suitable = false;
+                reason = 'ALLERGY ALERT: likely contains ' + menuAllergens.join(', ') + ' (in your allergy profile). ' + reason;
+                substitute = 'Ask the restaurant for a ' + menuAllergens.join('/').toLowerCase() + '-free preparation.';
             }
 
             return {
@@ -843,58 +1065,29 @@ const runOfflineAnalysis = (input, tab, profile) => {
         // Noise filtering
         if (normTok.length < 2 || /^\d+$/.test(normTok) || /^[^a-z0-9]+$/i.test(normTok)) return;
 
-        // 1. High-risk allergens first
-        if (profileAllergies.includes('nuts') && (normTok.includes('peanut') || normTok.includes('almond') || normTok.includes('cashew') || normTok.includes('walnut') || normTok.includes('hazelnut') || normTok.includes('pistachio') || normTok.includes('nut'))) {
-            totalScore -= 45;
-            allergenAlerts.push('Nuts');
-            personalizedWarning = "CRITICAL ALLERGY ALERT: Found matching nut components (" + tok + ") which poses severe systemic anaphylaxis risk under your Nuts allergy setting.";
-            
-            ingredients.push({
-                name: tok.charAt(0).toUpperCase() + tok.slice(1),
-                status: 'Extremely Harmful',
-                reason: 'Severe food allergen matching active user profile restriction. Ingestion can cause intense immediate allergy response.',
-                dailyLimitExceeded: true,
-                limitInfo: 'ZERO TOLERANCE INDICATED',
-                healthySubstitute: 'Sunflower seed butter or pumpkin seeds.'
-            });
-            return;
-        }
-
-        if (profileAllergies.includes('dairy') && (normTok.includes('milk') || normTok.includes('cheese') || normTok.includes('butter') || normTok.includes('whey') || normTok.includes('lactose') || normTok.includes('cream') || normTok.includes('casein') || normTok.includes('curd') || normTok.includes('ghee'))) {
-            totalScore -= 35;
-            allergenAlerts.push('Dairy');
-            personalizedWarning = "Dairy allergen detected (" + tok + "). May trigger immediate digestive, inflammatory, or severe immune reactions under active Dairy allergy.";
-            
-            ingredients.push({
-                name: tok.charAt(0).toUpperCase() + tok.slice(1),
-                status: 'Extremely Harmful',
-                reason: 'Dairy component found violating active lactose/dairy allergy profiles.',
-                dailyLimitExceeded: true,
-                limitInfo: 'AVOID COMPLETELY',
-                healthySubstitute: 'Oat milk, almond milk, or vegan nutritional cheese.'
-            });
-            return;
-        }
-
-        if (profileAllergies.includes('gluten') && (normTok.includes('wheat') || normTok.includes('maida') || normTok.includes('barley') || normTok.includes('rye') || normTok.includes('malt') || normTok.includes('gluten') || normTok.includes('semolina') || normTok.includes('atta'))) {
+        // 1. High-risk allergens first (all presets + any custom allergy the user typed)
+        const allergen = matchAllergen(normTok, profileAllergies);
+        if (allergen) {
             totalScore -= 40;
-            allergenAlerts.push('Gluten');
-            personalizedWarning = "Gluten-containing grain detected (" + tok + "). Can trigger severe celiac intestinal damage or systemic non-celiac gluten sensitivity.";
-            
+            if (allergenAlerts.indexOf(allergen.label) === -1) allergenAlerts.push(allergen.label);
+            personalizedWarning = "ALLERGY ALERT: '" + tok + "' contains " + allergen.label + ", which is in your allergy profile. Avoid this product.";
             ingredients.push({
                 name: tok.charAt(0).toUpperCase() + tok.slice(1),
                 status: 'Extremely Harmful',
-                reason: 'Gluten-containing grain conflicting with active Gluten intolerance/Celiac profile.',
+                reason: allergen.label + ' allergen matching your profile. Can trigger an allergic reaction, including anaphylaxis in severe allergies.',
                 dailyLimitExceeded: true,
-                limitInfo: 'GLUTEN INTOLERANCE WARNING',
-                healthySubstitute: 'Almond flour, coconut flour, or buckwheat.'
+                limitInfo: 'ZERO TOLERANCE - ALLERGEN',
+                healthySubstitute: allergen.substitute
             });
+            concerns.unshift(tok.toUpperCase() + ': ' + allergen.label + ' allergen in your profile');
             return;
         }
 
         // 2. Scan exact expanded dictionary with sorted keys
-        for (const key of sortedKeys) {
-            if (normTok.includes(key)) {
+        const entry = findDictEntry(normTok);
+        if (entry) {
+            const key = entry.key;
+            {
                 matched = true;
                 const details = OFFLINE_INGREDIENTS[key];
                 let status = details.status;
@@ -927,7 +1120,6 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
                 if (status === 'Extremely Harmful' || status === 'Harmful' || status === 'Concerning') concerns.push(tok.toUpperCase() + ": " + details.reason.slice(0, 60) + "...");
                 else if (status === 'Safe') positives.push(tok.charAt(0).toUpperCase() + tok.slice(1));
-                break;
             }
         }
 
@@ -941,7 +1133,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
             let substitute = '';
 
             // Sugars & Sweeteners
-            if (/ose\b|itol\b|syrup|sweetener|honey|nectar|jaggery/i.test(normTok)) {
+            if (/ose\b|itol\b|syrup|sweetener|honey|nectar|jaggery/i.test(normTok) && !/cellulose/i.test(normTok)) {
                 status = 'Harmful';
                 reason = 'Identified heuristically as a refined sugar, sugar alcohol, or concentrated sweetener. Triggers insulin and metabolic demand.';
                 deduction = 12;
@@ -952,7 +1144,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
                 }
             } 
             // Uncataloged INS / E numbers
-            else if (/(ins|e)\s*[-]?\s*\d+/i.test(normTok)) {
+            else if (/\bins \d{3}/i.test(normTok)) {
                 status = 'Harmful';
                 reason = 'Identified as an industrial chemical additive or preservative code (INS/E number). Processed additive with potential digestive sensitivity.';
                 deduction = 12;
@@ -973,7 +1165,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
                 substitute = 'Natural culinary spices and fresh herbs.';
             }
             // Artificial Colors & Dyes
-            else if (/(color|colour|dye|lake\b|pigment|yellow|red|blue)/i.test(normTok) && !/beet|carrot|berry|turmeric|paprika/i.test(normTok)) {
+            else if (/\b(colou?rs?|dyes?|lake|pigments?|yellow|red|blue|green)\b/i.test(normTok) && !/beet|carrot|berry|turmeric|paprika|annatto|chil+i|pepper|onion|lentil|bean|apple|grape|tea|natural|spirulina|saffron|curcumin|chlorophyll/i.test(normTok)) {
                 status = 'Harmful';
                 reason = 'Identified heuristically as an artificial synthetic dye or lake color. Associated with behavioral changes and cellular inflammation.';
                 deduction = 15;
@@ -1033,7 +1225,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
     else if (score < 80) overallRating = 'Moderate';
 
     return {
-        productName: tokens[0] ? tokens[0].toUpperCase() + ' - Scanned Product' : 'Product Analysis',
+        productName: 'Scanned Product',
         overallScore: score,
         overallRating,
         nutriscoreGrade: score > 85 ? 'A' : score > 70 ? 'B' : score > 50 ? 'C' : score > 35 ? 'D' : 'E',
@@ -1272,23 +1464,23 @@ const IngredientChip = ({ item }) => {
 const SafeLens = () => {
     const [activeTab, setActiveTab] = useState(TABS.FOOD);
     const [profile, setProfile] = useState(() => {
-        const saved = localStorage.getItem('safelens_profile');
-        return saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+        try {
+            const saved = JSON.parse(localStorage.getItem('safelens_profile'));
+            return saved ? Object.assign({}, DEFAULT_PROFILE, saved) : DEFAULT_PROFILE;
+        } catch (_) { return DEFAULT_PROFILE; }
     });
     
-    // Secure Obfuscated Groq Key
-    const geminiKey = ['gsk_Tkyra','PgpDTuH36Wk','fI2MWGdyb3F','YyWUlSKz4kW4','NznrEQP2EoeVN'].join('');
     const [lastInputData, setLastInputData] = useState('');
     
     // History State
     const [scanHistory, setScanHistory] = useState(() => {
-        const saved = localStorage.getItem('safelens_history');
-        return saved ? JSON.parse(saved) : [];
+        try { return JSON.parse(localStorage.getItem('safelens_history')) || []; } catch (_) { return []; }
     });
     
     const [loading, setLoading] = useState(false);
     const [analysis, setAnalysis] = useState(null);
     const [error, setError] = useState(null);
+    const [ocrStatus, setOcrStatus] = useState(null);
 
     useEffect(() => {
         localStorage.setItem('safelens_profile', JSON.stringify(profile));
@@ -1324,7 +1516,7 @@ const SafeLens = () => {
             if (localResult.ingredients && localResult.ingredients.some(i => i.status === 'Unknown')) {
                 hasUnknowns = true;
             }
-            localResult.needsAI = hasUnknowns;
+            localResult.needsAI = hasUnknowns || activeTab === TABS.MEDS || activeTab === TABS.MENU;
 
             setAnalysis(localResult);
             setScanHistory(prev => [{ id: Date.now(), date: new Date().toLocaleString(), type: activeTab, result: localResult, productName: localResult.productName || localResult.overallRisk || 'Local Analysis' }, ...prev].slice(0, 50));
@@ -1336,108 +1528,37 @@ const SafeLens = () => {
         }
     };
 
+    // Shared image -> OCR -> analysis pipeline used by every tab
+    const scanImage = async (imageSrc) => {
+        setError(null);
+        setLoading(true);
+        setOcrStatus({ status: 'Starting OCR engine', progress: 0 });
+        try {
+            const text = await performOCR(imageSrc, (status, progress) => setOcrStatus({ status, progress }));
+            if (!text || text.replace(/[^a-z]/gi, '').length < 4) {
+                throw new Error("Couldn't read any text. Fill the frame with the ingredient list, avoid glare, and hold steady.");
+            }
+            setOcrStatus(null);
+            await runAnalysis(text);
+        } catch (err) {
+            setError(err.message || 'Image scan failed.');
+        } finally {
+            setOcrStatus(null);
+            setLoading(false);
+        }
+    };
+
     const runDeepAnalysis = async (inputData) => {
+        if (!inputData || !inputData.trim()) return;
         setLoading(true);
         setError(null);
-
         try {
-            let prompt = '';
-            if (activeTab === TABS.FOOD) {
-                prompt = `ACT AS A STRICT, CRITICAL HEALTH INSPECTOR. Analyze these food ingredients/nutrition list for a user with the following profile:
-                Name: ${profile.name}
-                Age: ${profile.age}
-                Conditions: ${profile.conditions.join(', ')}
-                Allergies: ${profile.allergies.join(', ')}
-                Goals: ${profile.goal}
-                
-                Ingredients raw text: "${inputData}"
-
-                CRITICAL INSTRUCTIONS:
-                1. The raw text may contain OCR gibberish. Auto-correct them to the closest real chemical/ingredient name.
-                2. BE EXTREMELY STRICT. Scrutinize every ingredient against FDA/EWG watchlists.
-                3. Actively penalize synthetic additives, artificial preservatives, seed oils, and endocrine disruptors. Do not rate processed chemicals as "Safe".
-
-                Return strictly a single JSON object. Do not include markdown code block syntax. Follow this exact schema:
-                {
-                  "productName": "string",
-                  "overallScore": number,
-                  "overallRating": "Safe" | "Moderate" | "Harmful" | "Extremely Harmful",
-                  "nutriscoreGrade": "A" | "B" | "C" | "D" | "E",
-                  "personalizedWarning": "string",
-                  "ingredients": [
-                    { "name": "string", "status": "Safe" | "Moderate" | "Harmful" | "Extremely Harmful", "reason": "string", "dailyLimitExceeded": boolean, "limitInfo": "string", "healthySubstitute": "string" }
-                  ],
-                  "nutritionFlags": [{ "nutrient": "string", "value": "string", "flag": "ok"|"warning"|"danger", "note": "string" }],
-                  "allergenAlert": ["string"],
-                  "topConcerns": ["string"],
-                  "positives": ["string"],
-                  "overallSubstituteSuggestion": "string",
-                  "summary": "string"
-                }`;
-            } else if (activeTab === TABS.MEDS) {
-                prompt = `Analyze this list of clinical medications for drug-to-drug interactions and risks considering these active clinical conditions: ${profile.conditions.join(', ')}:
-                Medications list: "${inputData}"
-
-                CRITICAL INSTRUCTIONS: Auto-correct OCR gibberish to the closest real medication name. Be strictly clinical.
-
-                Return strictly a single JSON object without markdown code blocks. Follow this exact schema:
-                {
-                  "medicines": ["string"],
-                  "interactions": [
-                    { "drug1": "string", "drug2": "string", "severity": "None" | "Minor" | "Moderate" | "Major" | "Contraindicated", "effect": "string", "recommendation": "string" }
-                  ],
-                  "overallRisk": "Safe" | "Caution" | "High Risk" | "Dangerous",
-                  "generalAdvice": "string",
-                  "disclaimer": "Always consult a clinical physician. This evaluation is purely educational."
-                }`;
-            } else if (activeTab === TABS.SKIN) {
-                prompt = `ACT AS A STRICT, CRITICAL HEALTH INSPECTOR. Analyze these skincare/INCI cosmetic ingredients for a user with these profile attributes:
-                Skin Type: ${profile.skinType}
-                Conditions: ${profile.conditions.join(', ')}
-                
-                Skincare Ingredients list: "${inputData}"
-
-                CRITICAL INSTRUCTIONS: Auto-correct OCR gibberish. Be strictly critical. Penalize parabens, sulfates, and endocrine disruptors.
-
-                Return strictly a single JSON object without markdown code blocks. Follow this exact schema:
-                {
-                  "overallScore": number,
-                  "overallRating": "Safe" | "Moderate" | "Concerning" | "Avoid",
-                  "ingredients": [
-                    { "name": "string", "function": "string", "status": "Safe" | "Moderate" | "Concerning" | "Avoid", "reason": "string", "comedogenic": boolean, "endocrineDisruptor": boolean, "healthySubstitute": "string" }
-                  ],
-                  "topConcerns": ["string"],
-                  "positives": ["string"],
-                  "skinTypeWarning": "string",
-                  "summary": "string"
-                }`;
-            } else if (activeTab === TABS.MENU) {
-                prompt = `Decode this restaurant menu/dish descriptions for a user with this profile:
-                Allergies: ${profile.allergies.join(', ')}
-                Conditions: ${profile.conditions.join(', ')}
-                Dietary Goal: ${profile.goal}
-                
-                Menu Text: "${inputData}"
-
-                CRITICAL INSTRUCTIONS: Auto-correct OCR gibberish. Find healthiest options.
-
-                Return strictly a single JSON object without markdown code blocks. Follow this exact schema:
-                {
-                  "dishes": [
-                    { "name": "string", "estimatedCalories": number, "macros": { "protein": "string", "carbs": "string", "fat": "string" }, "allergens": ["string"], "healthScore": number, "suitable": boolean, "reason": "string", "healthierVersion": "string" }
-                  ],
-                  "topPicks": ["string"],
-                  "avoid": ["string"],
-                  "generalAdvice": "string"
-                }`;
-            }
-
-            const result = await callGroq(geminiKey, prompt);
+            const result = await callDeepAI(activeTab, inputData, profile);
             setAnalysis(result);
             setScanHistory(prev => [{ id: Date.now(), date: new Date().toLocaleString(), type: activeTab, result, productName: result.productName || result.overallRisk || 'Deep AI Analysis' }, ...prev].slice(0, 50));
         } catch (err) {
-            console.error("Analysis Failure:", err);
-            setError(err.message || "Failed to process data. Verify network connection.");
+            console.error('Deep Analysis Failure:', err);
+            setError(err.message || 'Deep AI analysis failed. Your offline result is still shown.');
         } finally {
             setLoading(false);
         }
@@ -1453,21 +1574,7 @@ const SafeLens = () => {
         const fileInputRef = useRef(null);
 
         // Core OCR triggers
-        const handleCapture = async (imageSrc) => {
-            setLoading(true);
-            setOcrProgress({ status: 'Booting OCR engine...', progress: 0.1 });
-            const text = await performOCR(imageSrc, (status, progress) => {
-                setOcrProgress({ status: `Reading text... (${status})`, progress });
-            });
-            setOcrProgress(null);
-            setLoading(false);
-            if (text && text.trim().length > 3) {
-                setTextInput(text);
-                runAnalysis(text);
-            } else {
-                setError("Failed to extract legible characters. Please try manual paste or a cleaner angle.");
-            }
-        };
+        const handleCapture = (imageSrc) => scanImage(imageSrc);
 
         const handleFile = (file) => {
             if (!file) return;
@@ -1609,17 +1716,7 @@ const SafeLens = () => {
         const [isCameraOpen, setIsCameraOpen] = useState(false);
         const [ocrProgress, setOcrProgress] = useState(null);
         
-        const handleCapture = async (imageSrc) => {
-            setLoading(true);
-            const text = await performOCR(imageSrc);
-            setLoading(false);
-            if (text && text.trim().length > 3) {
-                setTextInput(text);
-                runAnalysis(text);
-            } else {
-                setError("Failed to extract legible characters.");
-            }
-        };
+        const handleCapture = (imageSrc) => scanImage(imageSrc);
         const [textInput, setTextInput] = useState('');
         const [fileName, setFileName] = useState('');
         const fileInputRef = useRef(null);
@@ -1628,17 +1725,7 @@ const SafeLens = () => {
             if (!file) return;
             setFileName(file.name);
             const reader = new FileReader();
-            reader.onload = async (e) => {
-                setLoading(true);
-                const text = await performOCR(e.target.result);
-                setLoading(false);
-                if (text && text.trim().length > 3) {
-                    setTextInput(text);
-                    runAnalysis(text);
-                } else {
-                    setError("Failed to extract legible text from selected image.");
-                }
-            };
+            reader.onload = (e) => scanImage(e.target.result);
             reader.readAsDataURL(file);
         };
 
@@ -2245,14 +2332,16 @@ const SafeLens = () => {
                                 <Icon name={activeTab === TABS.FOOD ? 'food' : activeTab === TABS.MEDS ? 'meds' : activeTab === TABS.SKIN ? 'skin' : activeTab === TABS.MENU ? 'menu' : 'settings'} className="w-6 h-6 animate-pulse" />
                             </div>
                         </div>
-                        <h3 className="text-2xl font-black font-header tracking-tight text-white mb-2">Analyzing Scan</h3>
-                        <p className="text-xs text-slate-500 uppercase tracking-[0.3em] font-black">Connecting health safety algorithms...</p>
+                        <h3 className="text-2xl font-black font-header tracking-tight text-white mb-2">{ocrStatus ? 'Reading Label' : 'Analyzing Scan'}</h3>
+                        <p className="text-xs text-slate-500 uppercase tracking-[0.3em] font-black">
+                            {ocrStatus ? (ocrStatus.status + ' ' + Math.round((ocrStatus.progress || 0) * 100) + '%') : 'Connecting health safety algorithms...'}
+                        </p>
                         
                         <div className="mt-12 space-y-3 w-64 mx-auto">
                             <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                                 <div className="h-full bg-brand-teal animate-[pulse_1s_infinite] w-full shadow-[0_0_10px_#00F2B8]"></div>
                             </div>
-                            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">SafeLens Engine & Groq AI</p>
+                            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">SafeLens Engine & Deep AI</p>
                         </div>
                     </div>
                 </div>
