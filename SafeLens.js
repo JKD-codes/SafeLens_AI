@@ -654,7 +654,7 @@ const getOcrWorker = () => {
             logger: m => ocrProgressCb && ocrProgressCb(m.status, m.progress || 0)
         }).then(async (worker) => {
             await worker.setParameters({
-                tessedit_pageseg_mode: '6',     // single uniform block of text (label paragraphs)
+                tessedit_pageseg_mode: '3',     // automatic layout (best for real photos)
                 preserve_interword_spaces: '1'
             });
             return worker;
@@ -725,14 +725,21 @@ const performOCR = async (imageSrc, onProgress) => {
         const img = await loadImage(imageSrc);
         const canvas = preprocessForOCR(img);
         const worker = await getOcrWorker();
-        const { data } = await worker.recognize(canvas);
-        let text = cleanOcrText(data.text);
-        // Low confidence: retry on the original colour image (sometimes preprocessing hurts)
-        if (data.confidence < 45) {
-            const retry = await worker.recognize(img);
-            if (retry.data.confidence > data.confidence) text = cleanOcrText(retry.data.text);
+        let best = (await worker.recognize(canvas)).data;
+        // Low confidence: retry as a single text block, then on the original colour image
+        if (best.confidence < 70) {
+            await worker.setParameters({ tessedit_pageseg_mode: '6' });
+            const block = (await worker.recognize(canvas)).data;
+            if (block.confidence > best.confidence) best = block;
+            if (best.confidence < 55) {
+                const colour = (await worker.recognize(img)).data;
+                if (colour.confidence > best.confidence) best = colour;
+            }
+            await worker.setParameters({ tessedit_pageseg_mode: '3' });
         }
-        return text;
+        // Keep only lines Tesseract is reasonably sure about (drops glare/background noise)
+        const lines = (best.lines || []).filter(l => l.confidence >= 40 && /[a-z]{3}/i.test(l.text)).map(l => l.text);
+        return cleanOcrText(lines.length ? lines.join('\n') : best.text);
     } catch (err) {
         console.error('OCR Core Error:', err);
         throw new Error(err.message && err.message.indexOf('image') !== -1 ? err.message : 'OCR engine failed to load. Check your connection and try again.');
@@ -874,7 +881,9 @@ const normCodes = (str) => str.replace(/\b(?:ins|e)\s*[-.]?\s*(\d{3,4}[a-z]?)\b/
 
 // Normalize spelling variants + common OCR confusions so keys and label text line up
 const normText = (str) => normCodes(String(str).toLowerCase())
-    .replace(/\bl(?=n[a-z])/g, 'i')        // OCR: "lngredients", "lnvert" -> "ingredients", "invert"
+    .replace(/\bl(?=n[a-z])/g, 'i')
+    .replace(/([a-z])0(?=[a-z])|\b0(?=[a-z]{2})/g, (m, a) => (a || '') + 'o')   // "palm 0il" -> "palm oil"
+    .replace(/([a-z])1(?=[a-z])/g, '$1l')                                      // "g1ucose" -> "glucose"         // OCR: "lngredients", "lnvert" -> "ingredients", "invert"
     .replace(/sulph/g, 'sulf')
     .replace(/([a-z])ysed\b/g, '$1yzed')    // hydrolysed -> hydrolyzed
     .replace(/([a-z])ysate\b/g, '$1yzate')
@@ -973,6 +982,63 @@ const matchAllergen = (tok, allergies) => {
     return null;
 };
 
+// --- OCR error correction ---
+const levenshtein = (a, b) => {
+    if (Math.abs(a.length - b.length) > 3) return 99;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+        const cur = [i];
+        for (let j = 1; j <= b.length; j++) {
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        }
+        prev = cur;
+    }
+    return prev[b.length];
+};
+
+// Closest dictionary term for a misread token, e.g. "sodiun benzoaet" -> "sodium benzoate"
+const fuzzyDictTerm = (tok) => {
+    const t = tok.replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    if (t.length < 4) return null;
+    const maxDist = t.length <= 5 ? 1 : t.length <= 10 ? 2 : 3;
+    let best = null, bestD = 99;
+    for (const e of DICT_ENTRIES) {
+        if (e.term.length < 4 || /^ins /.test(e.term)) continue;
+        const d = levenshtein(t, e.term);
+        if (d < bestD) { bestD = d; best = e.term; }
+    }
+    return bestD <= maxDist ? best : null;
+};
+
+// Does this fragment look like real words rather than OCR noise?
+const looksLikeWords = (tok) => {
+    const letters = (tok.match(/[a-z]/gi) || []).length;
+    if (letters < 3 || letters / tok.replace(/\s/g, '').length < 0.75) return false;
+    const words = tok.split(/\s+/).filter(w => w.length > 0);
+    const good = words.filter(w => {
+        const ww = w.replace(/[^a-z]/gi, '');
+        return ww.length >= 3 && /[aeiouy]/i.test(ww) && !/[^aeiouy]{5,}/i.test(ww) && !/(.)/.test(ww) && ww.length <= 22;
+    });
+    return good.length / words.length >= 0.6;
+};
+
+// Correct OCR tokens, drop noise. Returns { tokens, skipped }
+const cleanOcrTokens = (tokens) => {
+    const out = [];
+    let skipped = 0;
+    tokens.forEach(tok => {
+        if (/^ins \d/.test(tok)) { out.push(tok); return; }
+        if (DICT_ENTRIES.some(e => e.term === tok)) { out.push(tok); return; }
+        const fixed = fuzzyDictTerm(tok);
+        if (fixed) { out.push(fixed); return; }
+        if (findDictEntry(tok)) { out.push(tok); return; }
+        // Unrecognized: keep only short, word-like fragments (likely real but unknown ingredients)
+        if (looksLikeWords(tok) && tok.split(/\s+/).length <= 4) out.push(tok);
+        else skipped++;
+    });
+    return { tokens: out.filter((t, i, a) => a.indexOf(t) === i), skipped };
+};
+
 // Keep only the ingredient section of an OCR'd label (drop nutrition tables, addresses, etc.)
 const extractIngredientSection = (raw) => {
     let t = raw;
@@ -1028,7 +1094,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
     if ((cleanText.match(/,/g) || []).length >= 3) cleanText = cleanText.replace(/\s*\n\s*/g, ' ');
 
     const isMenu = tab === TABS.MENU;
-    const tokens = cleanText.split(isMenu ? /[,;\n\(\)\{\}]/ : /[,;\n\(\)\{\}&*]|\s+and\s+|\.(?!\d)|\s[-\u2013]\s/)
+    const rawTokens = cleanText.split(isMenu ? /[,;\n\(\)\{\}]/ : /[,;\n\(\)\{\}&*]|\s+and\s+|\.(?!\d)|\s[-\u2013]\s/)
         // "Noodles: wheat flour" / "Contains: milk" -> drop the sub-header before the colon
         .map(t => (!isMenu && t.indexOf(':') !== -1) ? t.slice(t.lastIndexOf(':') + 1) : t)
         .reduce((acc, t) => acc.concat((tab === TABS.FOOD || tab === TABS.SKIN) ? splitMergedToken(t.trim()) : [t]), [])
@@ -1046,6 +1112,15 @@ const runOfflineAnalysis = (input, tab, profile) => {
         .filter(t => !/^(roasted|dried|dehydrated|powder|mixed|natural|added|organic|fresh|refined|edible|raw|whole|ground|pure|sugar[\s-]?free|e|ins|contains?|ingredients?|may contain|traces?)$/i.test(t))
         .filter(t => t.length > 1 && !/^\d+$/.test(t) && !/^(i|ii|iii|iv|v|vi)$/i.test(t))
         .filter((t, i, arr) => arr.indexOf(t) === i);
+    let tokens = rawTokens;
+
+    let skippedNoise = 0;
+    if (tab === TABS.FOOD || tab === TABS.SKIN) {
+        const cleaned = cleanOcrTokens(rawTokens);
+        tokens = cleaned.tokens;
+        skippedNoise = cleaned.skipped;
+    }
+    const noiseNote = skippedNoise ? ' ' + skippedNoise + ' unreadable fragment' + (skippedNoise > 1 ? 's were' : ' was') + ' ignored; scan closer/flatter for full accuracy.' : '';
 
     if (tab === TABS.MEDS) {
         // --- Medications offline engine ---
@@ -1230,7 +1305,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
             topConcerns: topConcerns.slice(0, 3),
             positives: positives.slice(0, 3),
             skinTypeWarning: skinTypeWarning || ('Ingredients align appropriately with your ' + (profile.skinType || 'skin') + ' type.'),
-            summary: "Skin Safety score evaluated at " + score + "/100. Local analysis completed using expanded INCI databases."
+            summary: "Skin Safety score evaluated at " + score + "/100 from " + ingredients.length + " recognized ingredients." + noiseNote
         };
     }
 
@@ -1520,7 +1595,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
         topConcerns: concerns.slice(0, 3),
         positives: positives.slice(0, 3),
         overallSubstituteSuggestion: score < 70 ? 'Replace with clean, minimally processed organic whole foods.' : 'Excellent choice! Nutritional values align fully with your health guard goals.',
-        summary: "Personalized safety score rated at " + score + "/100. Scanned via enhanced offline databases."
+        summary: "Personalized safety score rated at " + score + "/100 from " + ingredients.length + " recognized ingredients." + noiseNote
     };
 };
 
@@ -1533,7 +1608,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
     useEffect(() => {
         if (isOpen) {
             setCameraError(null);
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } })
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 }, advanced: [{ focusMode: 'continuous' }] } })
                 .then(s => {
                     setStream(s);
                     // Standard delay to guarantee element loading
@@ -1563,9 +1638,19 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
         canvas.height = videoRef.current.videoHeight || 480;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const data = canvas.toDataURL('image/png');
+        const data = canvas.toDataURL('image/jpeg', 0.95);
         onCapture(data);
         onClose();
+    };
+
+    // Native phone camera: full sensor resolution + autofocus, best OCR accuracy
+    const nativeInputRef = useRef(null);
+    const onNativePhoto = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { onCapture(ev.target.result); onClose(); };
+        reader.readAsDataURL(file);
     };
 
     if (!isOpen) return null;
@@ -1573,7 +1658,10 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
     return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[100] bg-[#080A0F] flex flex-col justify-between" style={{ height: "100dvh" }}>
             <div className="flex justify-between items-center p-6 bg-black/60 backdrop-blur-md absolute top-0 w-full z-10 border-b border-white/[0.05]">
-                <h3 className="font-header font-black text-white uppercase tracking-widest text-xs">Live Label Scanner</h3>
+                <div>
+                    <h3 className="font-header font-black text-white uppercase tracking-widest text-xs">Live Label Scanner</h3>
+                    <p className="text-[10px] text-slate-400 mt-1">Fill the frame with the ingredient list. Avoid glare.</p>
+                </div>
                 <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             
@@ -1584,7 +1672,11 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
                             <Icon name="alert" className="w-8 h-8" />
                         </div>
                         <p className="text-white font-bold mb-4">{cameraError}</p>
-                        <button onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-2 rounded-xl text-xs uppercase tracking-widest">Close Scanner</button>
+                        <div className="flex gap-3 justify-center">
+                            <button onClick={() => nativeInputRef.current && nativeInputRef.current.click()} className="bg-brand-teal text-black font-bold px-6 py-2 rounded-xl text-xs uppercase tracking-widest">Use Phone Camera</button>
+                            <button onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-2 rounded-xl text-xs uppercase tracking-widest">Close</button>
+                        </div>
+                        <input ref={nativeInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onNativePhoto} />
                     </div>
                 ) : (
                     <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover cursor-pointer" />
@@ -1593,7 +1685,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
                 {/* Visual scanning overlay guide lines */}
                 {!cameraError && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div className="w-64 h-64 border-2 border-brand-teal/40 rounded-[2rem] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] flex items-center justify-center relative">
+                        <div className="border-2 border-brand-teal/40 rounded-[1.5rem] shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] flex items-center justify-center relative" style={{ width: '94vw', maxWidth: '900px', height: '68dvh' }}>
                             <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-brand-teal rounded-tl-xl"></div>
                             <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-brand-teal rounded-tr-xl"></div>
                             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-brand-teal rounded-bl-xl"></div>
@@ -1605,7 +1697,14 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
             </div>
 
             {!cameraError && (
-                <div className="absolute bottom-40 left-4 right-4 flex justify-center items-center z-[105] pointer-events-none pb-[env(safe-area-inset-bottom)]">
+                <div className="absolute left-4 right-4 flex justify-center items-center gap-6 z-[105] pointer-events-none" style={{ bottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+                    <input ref={nativeInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onNativePhoto} />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); nativeInputRef.current && nativeInputRef.current.click(); }}
+                        className="pointer-events-auto bg-black/60 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-2xl active:scale-95"
+                    >
+                        HD Photo
+                    </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); capture(); }}
                         className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-black/40 backdrop-blur-md hover:bg-black/60 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.8)] pointer-events-auto"
