@@ -3,9 +3,11 @@
 // The Groq API key lives ONLY here on the server, read from process.env.GROQ_API_KEY.
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+// Override with GROQ_MODELS=model1,model2 in .env if Groq retires/renames models
+const DEFAULT_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+const getModels = () => (process.env.GROQ_MODELS ? process.env.GROQ_MODELS.split(',').map(m => m.trim()).filter(Boolean) : DEFAULT_MODELS);
 const MAX_INPUT_CHARS = 6000;
-const TIMEOUT_MS = 25000;
+const TIMEOUT_MS = 40000;
 const VALID_TABS = ['food', 'meds', 'skin', 'menu'];
 
 const SYSTEM_PROMPT = [
@@ -92,7 +94,7 @@ function parseJSON(content) {
 
 async function callGroq(apiKey, prompt) {
     let lastError;
-    for (const model of MODELS) {
+    for (const model of getModels()) {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
         try {
@@ -100,13 +102,13 @@ async function callGroq(apiKey, prompt) {
                 method: 'POST',
                 signal: ctrl.signal,
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-                body: JSON.stringify({
+                body: JSON.stringify(Object.assign({
                     model,
                     temperature: 0.2,
-                    max_tokens: 4096,
+                    max_completion_tokens: 8192,
                     response_format: { type: 'json_object' },
                     messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: prompt }]
-                })
+                }, /gpt-oss/.test(model) ? { reasoning_effort: 'low' } : {}))
             });
             if (!res.ok) {
                 const body = await res.text();
@@ -119,7 +121,9 @@ async function callGroq(apiKey, prompt) {
                 throw err;
             }
             const data = await res.json();
-            return parseJSON(data.choices[0].message.content);
+            // Strip any <think> reasoning some models emit before the JSON
+            const content = String(data.choices[0].message.content || '').replace(/<think>[\s\S]*?<\/think>/g, '');
+            return parseJSON(content);
         } catch (err) {
             lastError = err.name === 'AbortError' ? new Error('AI request timed out') : err;
             if (err.fatal) break;

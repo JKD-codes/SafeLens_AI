@@ -386,6 +386,214 @@ const OFFLINE_INGREDIENTS = {
     'monk fruit': { status: 'Safe', reason: 'Natural fruit mogroside extract with zero glycemic index.' }
 };
 
+// --- Supplemental dictionary: common label ingredients that were previously "Unknown" ---
+(() => {
+    const S = (status, reason, substitute) => ({ status, reason, substitute });
+    const WHOLE = 'Whole-food ingredient with no known safety concerns at normal dietary levels.';
+    const SPICE = 'Natural spice/herb. Safe, and often rich in antioxidant polyphenols.';
+    const add = {
+        // Grains, flours, starches
+        'wheat flour': S('Moderate', 'Usually refined wheat flour unless labelled whole wheat. Low fibre and fast-digesting, raising blood sugar quickly.', 'Whole wheat (atta) or millet flour.'),
+        'atta': S('Safe', 'Whole wheat flour retaining bran and fibre. Slower glucose release than maida.'),
+        'whole wheat flour': S('Safe', 'Whole grain flour with fibre, B-vitamins and minerals.'),
+        'wheat gluten': S('Moderate', 'Concentrated wheat protein. Fine for most people, but must be avoided with celiac disease or gluten sensitivity.', 'Pea or soy protein.'),
+        'semolina': S('Moderate', 'Refined durum wheat. Moderate glycemic impact; contains gluten.', 'Whole wheat or millet semolina.'),
+        'rice flour': S('Moderate', 'Refined, high-glycemic starch base, though gluten-free.', 'Brown rice or millet flour.'),
+        'gram flour': S('Safe', 'Chickpea flour (besan). High protein and fibre, low glycemic index.'),
+        'besan': S('Safe', 'Chickpea flour. High protein and fibre, low glycemic index.'),
+        'corn flour': S('Moderate', 'Refined maize starch. High glycemic index with little nutritional value.', 'Arrowroot or whole grain flour.'),
+        'maize': S('Safe', WHOLE),
+        'corn': S('Safe', WHOLE),
+        'millet': S('Safe', 'Whole grain rich in fibre and minerals with a low glycemic index.'),
+        'ragi': S('Safe', 'Finger millet. Excellent source of calcium and fibre.'),
+        'jowar': S('Safe', 'Sorghum whole grain. Gluten-free and high in fibre.'),
+        'bajra': S('Safe', 'Pearl millet whole grain, rich in iron and fibre.'),
+        'starch': S('Moderate', 'Refined carbohydrate thickener with a high glycemic index.', 'Whole-food thickeners like chia or oat flour.'),
+        'tapioca starch': S('Moderate', 'Refined cassava starch. High glycemic index, minimal nutrients.'),
+        'potato starch': S('Moderate', 'Refined starch with a high glycemic index.'),
+        'wheat bran': S('Safe', 'Insoluble fibre that supports digestion.'),
+        'oat fibre': S('Safe', 'Soluble/insoluble fibre supporting gut health and cholesterol.'),
+        'inulin': S('Safe', 'Prebiotic fibre (chicory root). May cause bloating in large amounts.'),
+        'yeast': S('Safe', 'Natural leavening agent.'),
+        // Fats & oils
+        'palm': S('Harmful', 'Palm oil/fat: high in saturated fat; raises LDL cholesterol when eaten frequently.', 'Cold-pressed groundnut or olive oil.'),
+        'seasoning': S('Moderate', 'Flavour blend; check its sub-ingredients for salt, sugar and flavour enhancers.'),
+        'vegetable oil': S('Moderate', 'Unspecified refined oil, often palm or soybean. Refined oils are high in omega-6 and may be heat-oxidised.', 'Cold-pressed olive, mustard or groundnut oil.'),
+        'palmolein': S('Harmful', 'Refined palm oil fraction high in saturated fat; raises LDL cholesterol when eaten frequently.', 'Cold-pressed groundnut or olive oil.'),
+        'palm olein': S('Harmful', 'Refined palm oil fraction high in saturated fat; raises LDL cholesterol when eaten frequently.', 'Cold-pressed groundnut or olive oil.'),
+        'rice bran oil': S('Safe', 'Heat-stable oil containing oryzanol, which may support cholesterol balance.'),
+        'sunflower oil': S('Moderate', 'High omega-6 refined oil; can oxidise during high-heat frying.', 'Cold-pressed or high-oleic oils.'),
+        'groundnut oil': S('Safe', 'Peanut oil with mostly monounsaturated fat. (Peanut allergy: highly refined oil is usually tolerated, but check with your doctor.)'),
+        'peanut oil': S('Safe', 'Mostly monounsaturated fat. (Peanut allergy: check with your doctor.)'),
+        'corn oil': S('Moderate', 'High omega-6 refined oil.'),
+        'cocoa mass': S('Safe', 'Ground cocoa beans, rich in flavanols.'),
+        'cocoa powder': S('Safe', 'Rich in antioxidant flavanols and minerals.'),
+        'chocolate': S('Moderate', 'Typically contains added sugar and fat. Dark chocolate (70%+) is the better choice.'),
+        'compound chocolate': S('Harmful', 'Cocoa substitute made with vegetable fats (often palm) and high sugar.', 'Real dark chocolate.'),
+        // Dairy & proteins
+        'milk': S('Safe', 'Good source of protein and calcium. Avoid with dairy allergy or lactose intolerance.'),
+        'milk powder': S('Safe', 'Dried milk providing protein and calcium. Contains dairy.'),
+        'skimmed milk powder': S('Safe', 'Low-fat dried milk; protein and calcium source. Contains dairy.'),
+        'cream': S('Moderate', 'High in saturated fat. Contains dairy.'),
+        'cheese': S('Moderate', 'Good protein and calcium but high in saturated fat and sodium.'),
+        'yogurt': S('Safe', 'Probiotic fermented dairy supporting gut health.'),
+        'curd': S('Safe', 'Probiotic fermented dairy supporting gut health.'),
+        'egg': S('Safe', 'Complete protein with choline and B-vitamins.'),
+        'soy protein': S('Safe', 'Complete plant protein. Contains soy allergen.'),
+        'pea protein': S('Safe', 'Hypoallergenic plant protein.'),
+        'gelatin': S('Safe', 'Animal-derived collagen protein (not vegetarian).'),
+        'hydrolyzed protein': S('Harmful', 'Hydrolysed proteins contain free glutamate (a hidden MSG source) used as a flavour enhancer.', 'Natural herbs and spices.'),
+        'soy sauce': S('Moderate', 'Very high in sodium; contains soy and often wheat.'),
+        // Fruits, vegetables, nuts, seeds
+        'potato': S('Safe', WHOLE), 'tomato': S('Safe', WHOLE), 'tomato powder': S('Safe', WHOLE), 'tomato paste': S('Safe', WHOLE),
+        'onion': S('Safe', WHOLE), 'peas': S('Safe', WHOLE), 'carrot': S('Safe', WHOLE), 'cabbage': S('Safe', WHOLE),
+        'beetroot': S('Safe', WHOLE), 'pumpkin': S('Safe', WHOLE), 'mushroom': S('Safe', WHOLE), 'cucumber': S('Safe', WHOLE),
+        'apple': S('Safe', WHOLE), 'banana': S('Safe', WHOLE), 'mango': S('Safe', WHOLE), 'strawberry': S('Safe', WHOLE),
+        'orange': S('Safe', WHOLE), 'lemon': S('Safe', WHOLE), 'pineapple': S('Safe', WHOLE), 'grape': S('Safe', WHOLE),
+        'raisins': S('Safe', 'Dried fruit with natural sugars and fibre.'), 'dried fruit': S('Safe', 'Natural sugars plus fibre; portion-control advised.'),
+        'fruit pulp': S('Safe', 'Real fruit content.'), 'mango pulp': S('Safe', 'Real fruit content.'),
+        'fruit juice concentrate': S('Moderate', 'Concentrated fruit sugar with the fibre removed; behaves like added sugar.', 'Whole fruit.'),
+        'coconut': S('Safe', WHOLE), 'desiccated coconut': S('Safe', 'Dried coconut; fibre-rich but high in saturated fat.'),
+        'coconut milk': S('Safe', 'Plant-based (dairy-free) but high in saturated fat.'),
+        'peanut butter': S('Safe', 'Protein and healthy fats. Contains peanuts.'),
+        'groundnut': S('Safe', 'Peanuts: protein and healthy fats. Major allergen.'),
+        'pumpkin seeds': S('Safe', 'Rich in magnesium, zinc and protein.'), 'sunflower seeds': S('Safe', 'Vitamin E and healthy fats.'),
+        'sesame': S('Safe', 'Calcium-rich seed. Sesame is a major allergen for some people.'),
+        'pistachio': S('Safe', 'Nutrient-dense nut. Tree-nut allergen.'), 'hazelnut': S('Safe', 'Nutrient-dense nut. Tree-nut allergen.'),
+        'vinegar': S('Safe', 'Acetic acid from fermentation; safe natural acidulant.'),
+        'cocoa': S('Safe', 'Rich in flavanols.'),
+        'coffee': S('Safe', 'Contains caffeine; moderate intake is generally safe.'),
+        'tea extract': S('Safe', 'Natural polyphenols; contains caffeine.'),
+        // Spices & herbs
+        'spices': S('Safe', SPICE), 'mixed spices': S('Safe', SPICE), 'condiments': S('Safe', SPICE), 'spices & condiments': S('Safe', SPICE),
+        'coriander': S('Safe', SPICE), 'cumin': S('Safe', SPICE), 'fenugreek': S('Safe', SPICE), 'clove': S('Safe', SPICE),
+        'cardamom': S('Safe', SPICE), 'chilli': S('Safe', SPICE), 'chili': S('Safe', SPICE), 'chilli powder': S('Safe', SPICE),
+        'red chilli': S('Safe', SPICE), 'paprika': S('Safe', SPICE), 'nutmeg': S('Safe', SPICE), 'mace': S('Safe', SPICE),
+        'aniseed': S('Safe', SPICE), 'fennel': S('Safe', SPICE), 'ajwain': S('Safe', SPICE), 'carom': S('Safe', SPICE),
+        'mustard': S('Safe', SPICE + ' Mustard is an allergen for some people.'), 'asafoetida': S('Safe', SPICE + ' Commercial hing often contains wheat flour.'),
+        'bay leaf': S('Safe', SPICE), 'curry leaves': S('Safe', SPICE), 'oregano': S('Safe', SPICE), 'basil': S('Safe', SPICE),
+        'thyme': S('Safe', SPICE), 'rosemary': S('Safe', SPICE), 'mint': S('Safe', SPICE), 'parsley': S('Safe', SPICE),
+        'saffron': S('Safe', SPICE), 'star anise': S('Safe', SPICE), 'dry mango powder': S('Safe', SPICE), 'amchur': S('Safe', SPICE),
+        'black salt': S('Moderate', 'Mineral salt; still high in sodium.'), 'herbs': S('Safe', SPICE), 'pepper': S('Safe', SPICE),
+        // Additive classes (generic label words)
+        'acidity regulator': S('Moderate', 'pH control agent. Usually low-risk (e.g. citric acid) but some phosphates add to dietary phosphorus load.'),
+        'humectant': S('Moderate', 'Moisture-retaining additive (e.g. glycerol, sorbitol, polyphosphates). Typical of ultra-processed foods.'),
+        'dough conditioner': S('Moderate', 'Processing aid for bread texture; may be sulphite (INS 223) based, a trigger for asthma-sensitive people.'),
+        'flour treatment agent': S('Moderate', 'Processing aid that bleaches or strengthens flour.'),
+        'anticaking agent': S('Moderate', 'Prevents clumping (often silicon dioxide). Low risk but marks a processed product.'),
+        'thickener': S('Moderate', 'Industrial texturiser; usually gums or modified starch.'),
+        'stabilizer': S('Moderate', 'Texture-stabilising additive common in ultra-processed foods.'),
+        'emulsifier': S('Moderate', 'Blends fat and water. Some emulsifiers (e.g. polysorbate 80, CMC) may disturb gut microbiota in studies.'),
+        'natural colour': S('Safe', 'Plant-derived colouring (e.g. beetroot, paprika, curcumin).'),
+        'natural color': S('Safe', 'Plant-derived colouring (e.g. beetroot, paprika, curcumin).'),
+        'natural flavour': S('Moderate', 'Flavour extracts from natural sources, but highly processed and undisclosed.'),
+        'natural flavor': S('Moderate', 'Flavour extracts from natural sources, but highly processed and undisclosed.'),
+        'flavour enhancer': S('Harmful', 'Glutamate/ribonucleotide-type taste enhancers used to boost palatability of processed food.', 'Herbs, spices, lemon.'),
+        'flavor enhancer': S('Harmful', 'Glutamate/ribonucleotide-type taste enhancers used to boost palatability of processed food.', 'Herbs, spices, lemon.'),
+        'sodium bicarbonate': S('Safe', 'Baking soda leavening agent.'), 'baking soda': S('Safe', 'Leavening agent.'), 'baking powder': S('Safe', 'Leavening agent.'),
+        'ammonium bicarbonate': S('Safe', 'Leavening agent that decomposes fully during baking.'),
+        'salt': S('Safe', 'Essential mineral; limit total sodium to under 2 g/day (5 g salt).'),
+        // INS / E codes
+        'ins 100': S('Safe', 'Curcumin (turmeric colour).'), 'ins 101': S('Safe', 'Riboflavin (vitamin B2) colour.'),
+        'ins 120': S('Moderate', 'Carmine (insect-derived red). Can cause allergic reactions; not vegetarian.'),
+        'ins 140': S('Safe', 'Chlorophyll (natural green).'), 'ins 141': S('Safe', 'Copper chlorophyll (green colour).'),
+        'ins 150a': S('Moderate', 'Plain caramel colour.'), 'ins 160a': S('Safe', 'Beta-carotene (provitamin A) colour.'),
+        'ins 160b': S('Safe', 'Annatto (natural colour). Rare allergies.'), 'ins 160c': S('Safe', 'Paprika extract colour.'),
+        'ins 162': S('Safe', 'Beetroot red.'), 'ins 170': S('Safe', 'Calcium carbonate.'),
+        'ins 200': S('Moderate', 'Sorbic acid preservative; low toxicity.'), 'ins 210': S('Harmful', 'Benzoic acid preservative; can form benzene with vitamin C and may worsen hyperactivity.'),
+        'ins 260': S('Safe', 'Acetic acid (vinegar).'), 'ins 270': S('Safe', 'Lactic acid.'), 'ins 296': S('Safe', 'Malic acid.'),
+        'ins 306': S('Safe', 'Tocopherols (vitamin E) antioxidant.'), 'ins 307': S('Safe', 'Alpha-tocopherol (vitamin E).'),
+        'ins 322': S('Safe', 'Lecithin emulsifier (soy or sunflower). Soy allergy: check source.'),
+        'ins 325': S('Safe', 'Sodium lactate.'), 'ins 327': S('Safe', 'Calcium lactate.'), 'ins 331': S('Safe', 'Sodium citrates.'),
+        'ins 332': S('Safe', 'Potassium citrates.'), 'ins 333': S('Safe', 'Calcium citrates.'), 'ins 334': S('Safe', 'Tartaric acid.'),
+        'ins 338': S('Harmful', 'Phosphoric acid. Linked to lower bone mineral density and dental erosion in high cola intake.', 'Sparkling water with lemon.'),
+        'ins 339': S('Moderate', 'Sodium phosphates; adds phosphorus load (caution with kidney disease).'),
+        'ins 340': S('Moderate', 'Potassium phosphates; caution with kidney disease.'),
+        'ins 341': S('Moderate', 'Calcium phosphates.'),
+        'ins 401': S('Safe', 'Sodium alginate (seaweed).'), 'ins 406': S('Safe', 'Agar (seaweed).'), 'ins 410': S('Safe', 'Locust bean gum.'),
+        'ins 414': S('Safe', 'Gum arabic (soluble fibre).'), 'ins 422': S('Safe', 'Glycerol humectant.'),
+        'ins 450': S('Moderate', 'Diphosphates; excess phosphate intake is linked to cardiovascular and kidney strain.'),
+        'ins 451': S('Moderate', 'Triphosphates; excess phosphate intake is linked to cardiovascular and kidney strain.'),
+        'ins 452': S('Moderate', 'Polyphosphates; excess phosphate intake is linked to cardiovascular and kidney strain.'),
+        'ins 460': S('Safe', 'Cellulose (fibre).'), 'ins 461': S('Moderate', 'Methyl cellulose.'), 'ins 464': S('Moderate', 'HPMC thickener.'),
+        'ins 481': S('Moderate', 'Sodium stearoyl lactylate emulsifier.'), 'ins 482': S('Moderate', 'Calcium stearoyl lactylate emulsifier.'),
+        'ins 501': S('Safe', 'Potassium carbonate (leavening/acidity regulator).'), 'ins 504': S('Safe', 'Magnesium carbonate.'),
+        'ins 508': S('Safe', 'Potassium chloride (salt substitute). Caution with kidney disease.'),
+        'ins 509': S('Safe', 'Calcium chloride.'), 'ins 516': S('Safe', 'Calcium sulphate.'),
+        'ins 551': S('Moderate', 'Silicon dioxide anticaking agent; nano forms under EFSA review.'),
+        'ins 900': S('Moderate', 'Dimethylpolysiloxane antifoaming agent used in frying oils.'),
+        'ins 960': S('Safe', 'Steviol glycosides (stevia).'), 'ins 1100': S('Safe', 'Amylase enzyme.'), 'ins 1101': S('Safe', 'Protease enzyme.'),
+        'ins 1404': S('Moderate', 'Modified starch.'), 'ins 1412': S('Moderate', 'Modified starch.'), 'ins 1414': S('Moderate', 'Modified starch.'),
+        'ins 1422': S('Moderate', 'Modified starch.'), 'ins 1442': S('Moderate', 'Modified starch.'), 'ins 1450': S('Moderate', 'Modified starch.'),
+        'ins 1520': S('Moderate', 'Propylene glycol carrier.'),
+        // Cosmetics / skincare (INCI)
+        'cetearyl alcohol': S('Safe', 'Fatty alcohol emollient/thickener. Non-drying, unlike ethanol.'),
+        'stearyl alcohol': S('Safe', 'Fatty alcohol emollient. Non-drying.'),
+        'behenyl alcohol': S('Safe', 'Fatty alcohol emollient.'),
+        'glyceryl stearate': S('Safe', 'Gentle emulsifier and emollient.'),
+        'butylene glycol': S('Safe', 'Humectant and solvent; well tolerated.'),
+        'propylene glycol': S('Moderate', 'Humectant/penetration enhancer; can irritate sensitive or eczema-prone skin.'),
+        'pentylene glycol': S('Safe', 'Humectant with mild preservative boosting.'),
+        'caprylyl glycol': S('Safe', 'Humectant and preservative booster.'),
+        'hexanediol': S('Safe', 'Humectant/preservative booster.'),
+        'sodium hyaluronate': S('Safe', 'Salt form of hyaluronic acid; excellent hydrator.'),
+        'tocopheryl acetate': S('Safe', 'Stable vitamin E antioxidant.'),
+        'caprylic/capric triglyceride': S('Safe', 'Lightweight coconut-derived emollient.'),
+        'capric triglyceride': S('Safe', 'Lightweight coconut-derived emollient.'),
+        'isopropyl myristate': S('Concerning', 'Highly comedogenic emollient; can trigger breakouts.', 'Squalane.'),
+        'shea butter': S('Safe', 'Rich emollient with anti-inflammatory fatty acids.'),
+        'butyrospermum parkii': S('Safe', 'Shea butter; rich emollient.'),
+        'jojoba': S('Safe', 'Non-comedogenic oil similar to skin sebum.'), 'argan': S('Safe', 'Antioxidant-rich nourishing oil.'),
+        'rosehip': S('Safe', 'Oil rich in fatty acids and provitamin A.'),
+        'kaolin': S('Safe', 'Gentle clay that absorbs oil.'), 'bentonite': S('Safe', 'Absorbent clay.'), 'mica': S('Safe', 'Mineral shimmer pigment.'),
+        'silica': S('Safe', 'Oil-absorbing mineral texturiser.'), 'sodium chloride': S('Safe', 'Salt used as a thickener in cleansers.'),
+        'lactic acid': S('Moderate', 'Gentle AHA exfoliant; use sunscreen.'), 'mandelic acid': S('Moderate', 'Mild AHA exfoliant; use sunscreen.'),
+        'azelaic acid': S('Safe', 'Anti-acne and anti-redness active.'), 'benzoyl peroxide': S('Moderate', 'Effective acne active but can dry, irritate and bleach fabrics.'),
+        'hydroquinone': S('Avoid', 'Potent skin bleach; prolonged use can cause ochronosis. Restricted in many countries.', 'Alpha arbutin or azelaic acid.'),
+        'mercury': S('Avoid', 'Toxic heavy metal sometimes found in illegal skin-lightening creams.', 'Discard the product.'),
+        'mercurous chloride': S('Avoid', 'Toxic mercury compound.'), 'calomel': S('Avoid', 'Toxic mercury compound.'),
+        'lead acetate': S('Avoid', 'Toxic heavy metal compound.'), 'coal tar': S('Avoid', 'Carcinogen-linked ingredient in some dyes and shampoos.'),
+        'toluene': S('Avoid', 'Toxic solvent (nail products) linked to developmental harm.'),
+        'alpha arbutin': S('Safe', 'Gentle brightening active.'), 'kojic acid': S('Moderate', 'Brightening active; can sensitise skin.'),
+        'peptides': S('Safe', 'Skin-repairing signal peptides.'), 'collagen': S('Safe', 'Film-forming humectant.'),
+        'urea': S('Safe', 'Natural moisturising factor and gentle exfoliant (not a formaldehyde releaser).'),
+        'polyquaternium': S('Moderate', 'Conditioning polymer; generally safe but builds up.'),
+        'cocamidopropyl betaine': S('Moderate', 'Mild surfactant; occasional contact allergies.'),
+        'sodium cocoyl isethionate': S('Safe', 'Very gentle surfactant.'), 'decyl glucoside': S('Safe', 'Gentle plant-based surfactant.'),
+        'coco glucoside': S('Safe', 'Gentle plant-based surfactant.'), 'lauryl glucoside': S('Safe', 'Gentle plant-based surfactant.'),
+        'acrylates copolymer': S('Moderate', 'Synthetic film-former (liquid microplastic).'),
+        'sodium hydroxide': S('Moderate', 'pH adjuster; safe in small finished-product amounts.'),
+        'methylisothiazolinone': S('Avoid', 'Preservative with very high rates of contact allergy; banned in EU leave-on products.', 'Phenoxyethanol-free gentle preservatives.'),
+        'methylchloroisothiazolinone': S('Avoid', 'Strong skin sensitiser preservative.'),
+        'chlorphenesin': S('Moderate', 'Preservative; can irritate sensitive skin.'),
+        'ethylhexylglycerin': S('Safe', 'Mild preservative booster and skin conditioner.'),
+        'bisabolol': S('Safe', 'Chamomile-derived soothing agent.'), 'madecassoside': S('Safe', 'Centella active; soothes and repairs.'),
+        'snail mucin': S('Safe', 'Hydrating, repairing secretion filtrate.'), 'zinc pca': S('Safe', 'Oil-regulating active.'),
+        'resorcinol': S('Concerning', 'Hair dye/acne ingredient; potential thyroid disruptor and sensitiser.'),
+        'lanolin': S('Moderate', 'Rich emollient but a common allergen.'), 'beeswax': S('Safe', 'Natural occlusive.'),
+        'paraffin': S('Moderate', 'Petroleum-derived occlusive; may clog pores in acne-prone skin.'),
+        'carnauba': S('Safe', 'Plant wax.'), 'candelilla': S('Safe', 'Plant wax.'), 'ozokerite': S('Moderate', 'Mineral wax.'),
+        'polyethylene': S('Moderate', 'Plastic polymer (microplastic).'), 'nylon-12': S('Moderate', 'Plastic powder texturiser.'),
+        'ptfe': S('Avoid', 'Teflon (PFAS "forever chemical").'), 'perfluoro': S('Avoid', 'PFAS "forever chemical".'),
+        'aluminum chlorohydrate': S('Moderate', 'Antiperspirant active; may irritate. Evidence of harm at normal use is weak.'),
+        'ci 77891': S('Safe', 'Titanium dioxide pigment/UV filter. Safe on skin; avoid inhaling powders.'),
+        'ci 77491': S('Safe', 'Iron oxide pigment.'), 'ci 77492': S('Safe', 'Iron oxide pigment.'), 'ci 77499': S('Safe', 'Iron oxide pigment.'),
+        'ci 77007': S('Safe', 'Ultramarine pigment.'), 'ci 77019': S('Safe', 'Mica pigment.'),
+        'benzyl alcohol': S('Moderate', 'Preservative/fragrance component; occasional irritation.'),
+        'limonene': S('Concerning', 'Fragrance allergen (EU-listed); oxidises into a skin sensitiser.'),
+        'linalool': S('Concerning', 'Fragrance allergen (EU-listed); oxidises into a skin sensitiser.'),
+        'citral': S('Concerning', 'Fragrance allergen.'), 'geraniol': S('Concerning', 'Fragrance allergen.'),
+        'citronellol': S('Concerning', 'Fragrance allergen.'), 'eugenol': S('Concerning', 'Fragrance allergen.'),
+        'coumarin': S('Concerning', 'Fragrance allergen.'), 'hexyl cinnamal': S('Concerning', 'Fragrance allergen.'),
+        'benzyl salicylate': S('Concerning', 'Fragrance allergen and weak endocrine activity.'),
+        'benzyl benzoate': S('Concerning', 'Fragrance allergen.'), 'cinnamal': S('Concerning', 'Strong fragrance allergen.'),
+        'butylphenyl methylpropional': S('Avoid', 'Lilial; banned in the EU as a reproductive toxin.'),
+        'xanthan gum': S('Safe', 'Natural thickener.'), 'glycerin': S('Safe', 'Excellent humectant.'),
+        'propanediol': S('Safe', 'Plant-derived humectant.'), 'dimethiconol': S('Moderate', 'Silicone; can feel occlusive.')
+    };
+    Object.keys(add).forEach(k => { if (!OFFLINE_INGREDIENTS[k]) OFFLINE_INGREDIENTS[k] = add[k]; });
+})();
+
 
 // Common Medication Interactions for local engine
 const MED_INTERACTIONS = [
@@ -534,30 +742,48 @@ const performOCR = async (imageSrc, onProgress) => {
 };
 
 // --- Deep AI Analysis (via SafeLens backend; the API key never reaches the browser) ---
+const LOCAL_BACKEND = 'http://localhost:3000';
+
+const postAnalyze = async (base, payload, signal) => {
+    const res = await fetch(base + '/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal
+    });
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    return { res, data };
+};
+
 const callDeepAI = async (tab, text, profile) => {
-    if (window.location.protocol === 'file:') {
-        throw new Error('Deep AI needs the SafeLens server. Run "npm start" and open http://localhost:3000');
-    }
+    const payload = {
+        tab,
+        text: text.slice(0, 6000),
+        profile: { age: profile.age, conditions: profile.conditions, allergies: profile.allergies, skinType: profile.skinType, goal: profile.goal }
+    };
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 60000);
+    const isLocalPage = window.location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+    const sameOrigin = window.location.protocol === 'file:' ? null : '';
     try {
-        const res = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                tab,
-                text: text.slice(0, 6000),
-                profile: { age: profile.age, conditions: profile.conditions, allergies: profile.allergies, skinType: profile.skinType, goal: profile.goal }
-            }),
-            signal: ctrl.signal
-        });
-        let data = null;
-        try { data = await res.json(); } catch (_) {}
-        if (!res.ok) {
-            if (res.status === 404) throw new Error('Deep AI backend not found. Start the app with "npm start" (or deploy the /api folder).');
-            throw new Error((data && data.error) || ('Deep AI request failed (' + res.status + ')'));
+        let out = null;
+        // 1) Same origin (npm start / Vercel)
+        if (sameOrigin !== null) {
+            try { out = await postAnalyze(sameOrigin, payload, ctrl.signal); } catch (e) { if (e.name === 'AbortError') throw e; }
         }
-        return normalizeResult(tab, data);
+        // 2) Page served by something else (Live Server, file://) -> use the local SafeLens backend
+        const servedElsewhere = !out || !out.data || out.res.status === 404 || out.res.status === 405;
+        if (servedElsewhere && isLocalPage && window.location.origin !== LOCAL_BACKEND) {
+            try { out = await postAnalyze(LOCAL_BACKEND, payload, ctrl.signal); }
+            catch (e) {
+                if (e.name === 'AbortError') throw e;
+                throw new Error('SafeLens backend is not running. Open a terminal in the project folder and run "npm start", then retry.');
+            }
+        }
+        if (!out || !out.data) throw new Error('Deep AI backend not reachable. Run "npm start" (or deploy the /api folder).');
+        if (!out.res.ok) throw new Error(out.data.error || ('Deep AI request failed (' + out.res.status + ')'));
+        return normalizeResult(tab, out.data);
     } catch (err) {
         if (err.name === 'AbortError') throw new Error('Deep AI timed out. Please try again.');
         throw err;
@@ -575,14 +801,20 @@ const normalizeResult = (tab, r) => {
     const pick = (v, allowed, d) => allowed.indexOf(v) !== -1 ? v : d;
 
     if (tab === TABS.MEDS) {
+        const sev = arr(r.interactions).map(i => i && i.severity);
+        let overallRisk = pick(r.overallRisk, ['Safe', 'Caution', 'High Risk', 'Dangerous'], 'Caution');
+        // Never let the summary understate the worst interaction found
+        if (sev.indexOf('Contraindicated') !== -1) overallRisk = 'Dangerous';
+        else if (sev.indexOf('Major') !== -1 && (overallRisk === 'Safe' || overallRisk === 'Caution')) overallRisk = 'High Risk';
+        else if (sev.indexOf('Moderate') !== -1 && overallRisk === 'Safe') overallRisk = 'Caution';
         return {
+            overallRisk,
             medicines: strArr(r.medicines),
             interactions: arr(r.interactions).filter(i => i && i.drug1).map(i => ({
                 drug1: String(i.drug1), drug2: String(i.drug2 || ''),
                 severity: pick(i.severity, ['None', 'Minor', 'Moderate', 'Major', 'Contraindicated'], 'Moderate'),
                 effect: String(i.effect || ''), recommendation: String(i.recommendation || '')
             })),
-            overallRisk: pick(r.overallRisk, ['Safe', 'Caution', 'High Risk', 'Dangerous'], 'Caution'),
             generalAdvice: String(r.generalAdvice || ''),
             disclaimer: String(r.disclaimer || 'Always consult a licensed physician or pharmacist. This evaluation is educational only.')
         };
@@ -640,6 +872,15 @@ const escapeRe = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Normalize additive codes: "E-211", "INS211", "e 211" -> "ins 211"
 const normCodes = (str) => str.replace(/\b(?:ins|e)\s*[-.]?\s*(\d{3,4}[a-z]?)\b/gi, 'ins $1');
 
+// Normalize spelling variants + common OCR confusions so keys and label text line up
+const normText = (str) => normCodes(String(str).toLowerCase())
+    .replace(/\bl(?=n[a-z])/g, 'i')        // OCR: "lngredients", "lnvert" -> "ingredients", "invert"
+    .replace(/sulph/g, 'sulf')
+    .replace(/([a-z])ysed\b/g, '$1yzed')    // hydrolysed -> hydrolyzed
+    .replace(/([a-z])ysate\b/g, '$1yzate')
+    .replace(/aluminium/g, 'aluminum')
+    .replace(/\bsoya\b/g, 'soy');
+
 // Whole-word term match (allows plural s/es) so "tea" doesn't match "instead", "rice" doesn't match "licorice"
 const termRegexCache = {};
 const hasTerm = (text, term) => {
@@ -653,9 +894,37 @@ const hasTerm = (text, term) => {
 
 // Dictionary keys, normalized and sorted longest-first for best phrase match
 const DICT_ENTRIES = Object.keys(OFFLINE_INGREDIENTS)
-    .map(key => ({ key, term: normCodes(key.toLowerCase()) }))
+    .map(key => ({ key, term: normText(key) }))
     .sort((a, b) => b.term.length - a.term.length);
-const findDictEntry = (tok) => DICT_ENTRIES.find(e => hasTerm(tok, e.term));
+const HIDDEN_MSG_RE = /hydrolyzed\s.*protein|protein hydrolyzate|autolyzed yeast/i;
+const findDictEntry = (tok) => HIDDEN_MSG_RE.test(tok)
+    ? { key: 'hydrolyzed protein', term: 'hydrolyzed protein' }
+    : DICT_ENTRIES.find(e => hasTerm(tok, e.term));
+
+const splitMergedToken = (tok) => {
+    if (tok.split(/\s+/).length < 5) return [tok];
+    let masked = tok;
+    const hits = [];
+    for (const e of DICT_ENTRIES) {
+        if (masked.indexOf(e.term) === -1) continue;
+        const re = new RegExp('(^|[^a-z0-9])(' + escapeRe(e.term) + '(?:e?s)?)(?=$|[^a-z0-9])', 'gi');
+        let m;
+        while ((m = re.exec(masked))) {
+            const start = m.index + m[1].length;
+            hits.push({ pos: start, text: m[2] });
+            masked = masked.slice(0, start) + ' '.repeat(m[2].length) + masked.slice(start + m[2].length);
+            re.lastIndex = start + 1;
+        }
+    }
+    if (hits.length < 2) return [tok];
+    // Keep leftover words too (they may be allergens or unknown ingredients)
+    const leftRe = /[a-z][a-z0-9'\-]*(?: [a-z0-9'\-]+)*/gi;
+    let m;
+    while ((m = leftRe.exec(masked))) {
+        if (m[0].replace(/[^a-z]/gi, '').length >= 3 && !/^(and|with|of|the|in|from|contains?)$/i.test(m[0])) hits.push({ pos: m.index, text: m[0] });
+    }
+    return hits.sort((a, b) => a.pos - b.pos).map(h => h.text.trim());
+};
 
 // Allergen detection rules (word-boundary based, with plant-based / look-alike exclusions)
 const ALLERGEN_RULES = {
@@ -749,8 +1018,8 @@ const runOfflineAnalysis = (input, tab, profile) => {
 
     // 2. Clean input and tokenize
     const section = (tab === TABS.FOOD || tab === TABS.SKIN) ? extractIngredientSection(input) : input;
-    let cleanText = normCodes(section.toLowerCase())
-        .replace(/^\s*(ingredients?|composition|inci|contains)\s*[:\-;]?\s*/i, '')
+    let cleanText = normText(section)
+        .replace(/^\s*(ingredients?|composition|inci|contains)\s*[:\-;.]?\s*/i, '')
         .replace(/\([ivx\s]+\)/gi, '') // normalize roman numerals e.g. (ii) in INS 503(ii)
         .replace(/\[/g, '(')
         .replace(/\]/g, ')')
@@ -758,18 +1027,23 @@ const runOfflineAnalysis = (input, tab, profile) => {
     // OCR wraps long ingredient names across lines; in comma-separated lists newlines are not separators
     if ((cleanText.match(/,/g) || []).length >= 3) cleanText = cleanText.replace(/\s*\n\s*/g, ' ');
 
-    const tokens = cleanText.split(/[,;\n\(\)\{\}]/)
+    const isMenu = tab === TABS.MENU;
+    const tokens = cleanText.split(isMenu ? /[,;\n\(\)\{\}]/ : /[,;\n\(\)\{\}&*]|\s+and\s+|\.(?!\d)|\s[-\u2013]\s/)
+        // "Noodles: wheat flour" / "Contains: milk" -> drop the sub-header before the colon
+        .map(t => (!isMenu && t.indexOf(':') !== -1) ? t.slice(t.lastIndexOf(':') + 1) : t)
+        .reduce((acc, t) => acc.concat((tab === TABS.FOOD || tab === TABS.SKIN) ? splitMergedToken(t.trim()) : [t]), [])
         .map(t => t.trim()
             .replace(/^and\s+/i, '')
             .replace(/^with\s+/i, '')
             .replace(/^contains\s+/i, '')
             .replace(/^edible\s+/i, '')
             .replace(/\s*\d+(\.\d+)?%\s*/g, '')
-            .replace(/\.$/, '')
+            .replace(/^[^a-z0-9]+|[^a-z0-9)]+$/gi, '')
             .trim()
         )
         // Bare additive numbers, e.g. "Emulsifier (322, 471)" -> "ins 322"
         .map(t => (tab === TABS.FOOD && /^\d{3}[a-z]?$/.test(t)) ? 'ins ' + t : t)
+        .filter(t => !/^(roasted|dried|dehydrated|powder|mixed|natural|added|organic|fresh|refined|edible|raw|whole|ground|pure|sugar[\s-]?free|e|ins|contains?|ingredients?|may contain|traces?)$/i.test(t))
         .filter(t => t.length > 1 && !/^\d+$/.test(t) && !/^(i|ii|iii|iv|v|vi)$/i.test(t))
         .filter((t, i, arr) => arr.indexOf(t) === i);
 
@@ -885,7 +1159,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
                 let comedogenic = false;
                 let edc = false;
 
-                if (/paraben|phthalate|triclosan|pf[ao]s|formaldehyd|hydantoin|urea\b/i.test(normTok)) {
+                if (/paraben|phthalate|triclosan|pf[ao]s|formaldehyd|hydantoin|idinyl urea/i.test(normTok)) {
                     status = 'Avoid'; reason = 'Heuristically identified as a toxic preservative, formaldehyde donor, or endocrine disruptor. Avoid prolonged dermal absorption.';
                     deduction = 25; func = 'Toxic Preservative / EDC'; edc = true;
                 } else if (/sulfate|sls|sles|peg-|steareth|ceteareth|polysorbate/i.test(normTok)) {
@@ -1095,7 +1369,7 @@ const runOfflineAnalysis = (input, tab, profile) => {
                 let limitExceeded = false;
                 let limitInfo = '';
 
-                if (profileConditions.includes('diabetes') && (key.includes('sugar') || key.includes('syrup') || key.includes('glucose') || key.includes('dextrose') || key.includes('maltodextrin') || key.includes('fructose') || key.includes('maida') || key.includes('flour'))) {
+                if (details.status !== 'Safe' && profileConditions.includes('diabetes') && (key.includes('sugar') || key.includes('syrup') || key.includes('glucose') || key.includes('dextrose') || key.includes('maltodextrin') || key.includes('fructose') || key.includes('maida') || key.includes('flour'))) {
                     deduction *= 2; status = 'Extremely Harmful'; limitExceeded = true;
                     limitInfo = 'CRITICAL LIMIT EXCEEDED FOR DIABETIC METABOLISM';
                     personalizedWarning = "High glycemic ingredient (" + tok.toUpperCase() + ") found. Poses immediate risks of severe postprandial glucose surges under Diabetes profile.";
@@ -1132,8 +1406,15 @@ const runOfflineAnalysis = (input, tab, profile) => {
             let limitInfo = '';
             let substitute = '';
 
+            // Hidden MSG sources
+            if (/hydrolyzed .*protein|protein hydrolyzate|autolyzed/i.test(normTok)) {
+                status = 'Harmful';
+                reason = 'Hydrolysed/autolysed proteins contain free glutamate, a hidden MSG-type flavour enhancer.';
+                deduction = 10;
+                substitute = 'Natural herbs and spices.';
+            }
             // Sugars & Sweeteners
-            if (/ose\b|itol\b|syrup|sweetener|honey|nectar|jaggery/i.test(normTok) && !/cellulose/i.test(normTok)) {
+            else if (/ose\b|itol\b|syrup|sweetener|honey|nectar|jaggery/i.test(normTok) && !/cellulose/i.test(normTok)) {
                 status = 'Harmful';
                 reason = 'Identified heuristically as a refined sugar, sugar alcohol, or concentrated sweetener. Triggers insulin and metabolic demand.';
                 deduction = 12;
@@ -2011,7 +2292,7 @@ const SafeLens = () => {
                         </div>
                         
                         <h3 className="mt-6 text-3xl font-black font-header tracking-tight text-white uppercase">
-                            {data.overallRisk} Risk
+                            {data.overallRisk === 'Safe' ? 'Low Risk' : /risk/i.test(data.overallRisk) ? data.overallRisk : data.overallRisk + ' Risk'}
                         </h3>
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">Medication Interaction Assessment</p>
                         

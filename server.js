@@ -32,6 +32,17 @@ const send = (res, status, body, type) => {
 http.createServer((req, res) => {
     const url = decodeURIComponent(req.url.split('?')[0]);
 
+    // Allow the app to be opened from another local dev server (e.g. VS Code Live Server on :5500)
+    const origin = req.headers.origin || '';
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    }
+    if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+
+    if (url === '/api/health') return send(res, 200, { ok: true, ai: !!process.env.GROQ_API_KEY });
+
     if (url === '/api/analyze') {
         if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
         let size = 0;
