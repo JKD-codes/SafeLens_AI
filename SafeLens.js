@@ -1759,8 +1759,9 @@ const ScoreCircle = ({ score, size = 180 }) => {
 };
 
 // --- Custom Interactive Ingredient Chip Component ---
-const IngredientChip = ({ item }) => {
-    const [expanded, setExpanded] = useState(false);
+const IngredientChip = ({ item, forceOpen }) => {
+    const [expanded, setExpanded] = useState(!!forceOpen);
+    useEffect(() => { if (forceOpen) setExpanded(true); }, [forceOpen]);
     
     const colors = {
         'Safe': 'bg-brand-teal/5 text-brand-teal border-brand-teal/20 hover:bg-brand-teal/10',
@@ -1836,6 +1837,185 @@ const IngredientChip = ({ item }) => {
                     )}
                 </div>
             )}
+        </div>
+    );
+};
+
+// --- Ingredient Map: risk split bar + label-order tiles + filterable detail list ---
+const RISK_TIERS = [
+    { id: 'critical', label: 'High risk', color: '#d03b3b', ink: '#ffffff', icon: 'alert', statuses: ['Extremely Harmful', 'Avoid'] },
+    { id: 'serious', label: 'Harmful', color: '#ec835a', ink: '#ffffff', icon: 'alert', statuses: ['Harmful', 'Concerning'] },
+    { id: 'warning', label: 'Moderate', color: '#fab219', ink: '#0b0b0b', icon: 'history', statuses: ['Moderate'] },
+    { id: 'good', label: 'Safe', color: '#0ca30c', ink: '#ffffff', icon: 'check', statuses: ['Safe'] },
+    { id: 'unknown', label: 'Unrated', color: '#64748b', ink: '#ffffff', icon: 'search', statuses: [] }
+];
+const tierOf = (status) => RISK_TIERS.find(t => t.statuses.indexOf(status) !== -1) || RISK_TIERS[4];
+const hexA = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
+
+const IngredientBreakdown = ({ ingredients }) => {
+    const items = (ingredients || []).map((it, idx) => Object.assign({}, it, { idx, tier: tierOf(it.status) }));
+    const [filter, setFilter] = useState(null);
+    const [selected, setSelected] = useState(null);
+    const [hovered, setHovered] = useState(null);
+    const listRefs = useRef({});
+
+    if (!items.length) return null;
+
+    const total = items.length;
+    const counts = RISK_TIERS.map(t => ({ tier: t, n: items.filter(i => i.tier.id === t.id).length })).filter(c => c.n > 0);
+
+    // Takeaway: labels list ingredients by quantity, so the first few make up most of the product
+    const top = items.slice(0, Math.min(5, total));
+    const topBad = top.filter(i => i.tier.id === 'critical' || i.tier.id === 'serious').length;
+    const takeaway = topBad === 0
+        ? 'None of the top ' + top.length + ' ingredients (the bulk of the product) are rated harmful.'
+        : topBad + ' of the top ' + top.length + ' ingredients (the bulk of the product) ' + (topBad === 1 ? 'is' : 'are') + ' rated harmful.';
+
+    const focus = hovered !== null ? items[hovered] : selected !== null ? items[selected] : null;
+    const visible = filter ? items.filter(i => i.tier.id === filter) : items;
+
+    const pick = (idx) => {
+        setSelected(idx);
+        setFilter(null);
+        setTimeout(() => {
+            const el = listRefs.current[idx];
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 60);
+    };
+
+    return (
+        <div className="space-y-6 min-w-0 w-full">
+            <div className="glass p-4 sm:p-6 rounded-[2rem] border-white/5 space-y-5 min-w-0">
+                <div className="flex justify-between items-end gap-3">
+                    <div className="min-w-0">
+                        <h4 className="text-[9px] uppercase tracking-widest text-slate-500 font-black">Ingredient Map</h4>
+                        <p className="text-xs text-slate-300 font-semibold mt-1">{takeaway}</p>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{total} items</span>
+                </div>
+
+                {/* Risk split: one whole, split by tier. Tap a part to filter the list. */}
+                <div
+                    className="flex w-full gap-[2px]"
+                    role="img"
+                    aria-label={'Risk split: ' + counts.map(c => c.tier.label + ' ' + c.n + ' of ' + total).join(', ')}
+                >
+                    {counts.map(c => {
+                        const share = Math.round((c.n / total) * 100);
+                        const active = filter === c.tier.id;
+                        return (
+                            <button
+                                key={c.tier.id}
+                                onClick={() => setFilter(active ? null : c.tier.id)}
+                                title={c.tier.label + ': ' + c.n + ' of ' + total + ' (' + share + '%)'}
+                                className="h-7 rounded-[4px] flex items-center px-2 text-[11px] font-black transition-all min-w-0 overflow-hidden"
+                                style={{
+                                    flexGrow: c.n,
+                                    flexBasis: 0,
+                                    background: c.tier.color,
+                                    color: c.tier.ink,
+                                    opacity: filter && !active ? 0.35 : 1,
+                                    boxShadow: active ? '0 0 16px ' + hexA(c.tier.color, 0.6) : 'none'
+                                }}
+                            >
+                                {c.n / total >= 0.12 ? share + '%' : ''}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Legend (names in bar order, with icon so color never carries meaning alone) */}
+                <div className="flex flex-wrap gap-2">
+                    {counts.map(c => {
+                        const active = filter === c.tier.id;
+                        return (
+                            <button
+                                key={c.tier.id}
+                                onClick={() => setFilter(active ? null : c.tier.id)}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold transition-all ${active ? 'bg-white/10 border-white/20 text-white' : 'border-white/5 text-slate-400 hover:text-white'}`}
+                            >
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ background: c.tier.color }}></span>
+                                <Icon name={c.tier.icon} className="w-3 h-3" />
+                                {c.tier.label} · {c.n}
+                            </button>
+                        );
+                    })}
+                    {filter && (
+                        <button onClick={() => setFilter(null)} className="px-2.5 py-1 text-[10px] font-bold text-brand-teal">Show all</button>
+                    )}
+                </div>
+
+                {/* Tiles in label order: first 3 are the largest by quantity, so they get bigger tiles */}
+                <div>
+                    <p className="text-[9px] uppercase tracking-widest text-slate-600 font-black mb-2">In label order · largest quantity first</p>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-[3px]" style={{ gridAutoRows: '58px', gridAutoFlow: 'dense' }}>
+                        {items.map(it => {
+                            const big = it.idx < 3 && total > 4;
+                            const isSel = selected === it.idx;
+                            const dim = filter && it.tier.id !== filter;
+                            const glow = it.tier.id === 'critical' || it.tier.id === 'serious';
+                            return (
+                                <button
+                                    key={it.idx}
+                                    onClick={() => pick(it.idx)}
+                                    onMouseEnter={() => setHovered(it.idx)}
+                                    onMouseLeave={() => setHovered(null)}
+                                    onFocus={() => setHovered(it.idx)}
+                                    onBlur={() => setHovered(null)}
+                                    aria-label={'#' + (it.idx + 1) + ' ' + it.name + ', ' + it.tier.label}
+                                    className={`relative rounded-[6px] p-2 text-left overflow-hidden transition-all duration-300 hover:-translate-y-0.5 ${big ? 'col-span-2 row-span-2' : ''}`}
+                                    style={{
+                                        background: hexA(it.tier.color, isSel ? 0.32 : 0.16),
+                                        border: '1px solid ' + hexA(it.tier.color, isSel ? 0.9 : 0.4),
+                                        boxShadow: glow && !dim ? '0 0 14px ' + hexA(it.tier.color, 0.25) : 'none',
+                                        opacity: dim ? 0.2 : 1
+                                    }}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black text-slate-400">#{it.idx + 1}</span>
+                                        <span style={{ color: it.tier.color }}><Icon name={it.tier.icon} className={big ? 'w-4 h-4' : 'w-3 h-3'} /></span>
+                                    </div>
+                                    <p className={`font-bold text-white leading-tight mt-1 ${big ? 'text-sm' : 'text-[10px]'}`} style={{ display: '-webkit-box', WebkitLineClamp: big ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                        {it.name}
+                                    </p>
+                                    {big && <p className="absolute bottom-2 left-2 text-[9px] font-black uppercase tracking-widest" style={{ color: it.tier.color }}>{it.status}</p>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Focus readout (hover on desktop, tap on mobile) */}
+                <div className="min-h-[44px] rounded-2xl bg-black/20 border border-white/5 px-4 py-3 text-xs">
+                    {focus ? (
+                        <div className="flex gap-3 items-start">
+                            <span className="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0" style={{ background: focus.tier.color }}></span>
+                            <div>
+                                <span className="font-black text-white">#{focus.idx + 1} {focus.name}</span>
+                                <span className="text-slate-500 font-bold"> · {focus.status}</span>
+                                <p className="text-slate-400 font-medium mt-0.5 leading-relaxed">{focus.reason}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <span className="text-slate-500 font-semibold">Tap any tile for details. Tap a color in the bar to filter.</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Detail list (the table view) */}
+            <div className="space-y-2">
+                <div className="flex justify-between items-end px-2">
+                    <h4 className="text-[9px] uppercase tracking-widest text-slate-500 font-black">
+                        Composition Breakdown{filter ? ' · ' + RISK_TIERS.find(t => t.id === filter).label : ''}
+                    </h4>
+                    <span className="text-[10px] text-slate-600 font-bold">{visible.length} shown</span>
+                </div>
+                {visible.map(it => (
+                    <div key={it.idx} ref={el => { listRefs.current[it.idx] = el; }}>
+                        <IngredientChip item={it} forceOpen={selected === it.idx} />
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };
@@ -2528,15 +2708,7 @@ const SafeLens = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-end px-2">
-                            <h4 className="text-[9px] uppercase tracking-widest text-slate-500 font-black">Composition Breakdown</h4>
-                            <span className="text-[10px] text-slate-600 font-bold">{(data.ingredients ? data.ingredients.length : 0) || 0} Items</span>
-                        </div>
-                        <div className="space-y-2">
-                            {(data.ingredients || []).map((item, idx) => <IngredientChip key={idx} item={item} />)}
-                        </div>
-                    </div>
+                    <IngredientBreakdown ingredients={data.ingredients} />
                 )}
 
                 {/* Skin Specific Warnings */}
